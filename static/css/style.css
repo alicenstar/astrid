@@ -1,5 +1,9 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+:root {
+    --radius: 8px;
+}
+
 /* Dark mode (default) — palette: Neon Pink, Soft Linen, Space Indigo, Wisteria Blue, Canary Yellow */
 [data-theme="dark"] {
     --bg: #1a1b2e;
@@ -12,7 +16,6 @@
     --warning: #fffd82;
     --danger: #f92a82;
     --border: #3d3f56;
-    --radius: 8px;
     --input-bg: #232438;
     color-scheme: dark;
 }

@@ -1,4 +1,4 @@
-.PHONY: dev stop start db test lint build clean
+.PHONY: dev stop start db test lint build clean docker push
 
 # Start Postgres + Redis, run the app with hot-reload
 dev: start
@@ -36,7 +36,11 @@ build:
 
 # Build Docker image
 docker:
-	docker build -t astrid:dev .
+	docker build -t alicenstar/astrid:latest .
+
+# Push Docker image
+push: docker
+	docker push alicenstar/astrid:latest
 
 # Remove containers and built artifacts
 clean: stop

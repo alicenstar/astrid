@@ -163,6 +163,10 @@ func (h *AuthHandler) DemoLogin(w http.ResponseWriter, r *http.Request) {
 		h.tmpl.RenderError(w, "Could not create demo session", http.StatusInternalServerError)
 		return
 	}
+	if err := models.SeedDemoData(h.db, user.ID); err != nil {
+		h.tmpl.RenderError(w, "Could not set up demo data", http.StatusInternalServerError)
+		return
+	}
 	sessionID, _ := auth.CreateSession(h.rdb, user.ID, user.Email)
 	h.setSessionCookie(w, sessionID)
 	http.Redirect(w, r, "/", http.StatusSeeOther)

@@ -669,3 +669,80 @@ func TestFindOrCreateGoogleUser(t *testing.T) {
 		t.Fatal("expected same user ID on second call")
 	}
 }
+
+func TestSeedDemoData(t *testing.T) {
+	cleanDB(t, testDB)
+
+	user, err := EnsureDefaultUser(testDB)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// First call should seed data
+	if err := SeedDemoData(testDB, user.ID); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	// Calorie plan created and active
+	plan, err := GetActiveCaloriePlan(testDB, user.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan == nil {
+		t.Fatal("expected active calorie plan after seed")
+	}
+	if plan.Name != "Cut" {
+		t.Fatalf("expected plan name 'Cut', got %q", plan.Name)
+	}
+	if len(plan.Days) != 7 {
+		t.Fatalf("expected 7 plan days, got %d", len(plan.Days))
+	}
+
+	// Workout split created and active
+	split, err := GetActiveWorkoutSplit(testDB, user.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if split == nil {
+		t.Fatal("expected active workout split after seed")
+	}
+	if len(split.Days) != 5 {
+		t.Fatalf("expected 5 split days (Mon-Fri), got %d", len(split.Days))
+	}
+	// Check exercises exist
+	totalExercises := 0
+	for _, d := range split.Days {
+		totalExercises += len(d.Exercises)
+	}
+	if totalExercises != 25 {
+		t.Fatalf("expected 25 exercises, got %d", totalExercises)
+	}
+
+	// Meal logs exist for today
+	today := time.Now().Truncate(24 * time.Hour)
+	log, err := GetOrCreateDailyLog(testDB, user.ID, today)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(log.Meals) < 1 {
+		t.Fatal("expected meals for today after seed")
+	}
+
+	// Workout streak of 3
+	streak, err := GetWorkoutStreak(testDB, nil, user.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if streak != 3 {
+		t.Fatalf("expected 3-day streak, got %d", streak)
+	}
+
+	// Second call is idempotent — no error, no duplicates
+	if err := SeedDemoData(testDB, user.ID); err != nil {
+		t.Fatalf("second seed call: %v", err)
+	}
+	plans, _ := ListCaloriePlans(testDB, user.ID)
+	if len(plans) != 1 {
+		t.Fatalf("expected 1 plan after second seed, got %d", len(plans))
+	}
+}

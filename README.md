@@ -64,7 +64,7 @@ The app requires authentication. Three options:
 
 | Method | How | When to use |
 |--------|-----|-------------|
-| **Demo Login** | Click "Demo Login" on the login page. No credentials needed. | Quick access, demos, development |
+| **Demo Login** | Click "Demo Login" on the login page. No credentials needed. Auto-seeds sample data (calorie plan, meals, workout split, streak). | Quick access, demos, development |
 | **Sign up** | Go to `/signup`, enter any name, email, and password (8+ chars). Then log in at `/login`. | Testing multi-user, realistic flows |
 | **Google OAuth** | Click "Continue with Google" (only visible when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` env vars are set). | Production, SSO |
 
@@ -91,13 +91,14 @@ Tests use the `astrid_test` database (auto-created by `make start`) to avoid int
 
 ## Docker
 
-Build the container image:
+Build and push the container image:
 
 ```bash
-docker build -t astrid:dev .
+make docker   # Build image (alicenstar/astrid:latest)
+make push     # Build + push to Docker Hub
 ```
 
-The Dockerfile uses a multi-stage build: Go compilation in `golang:1.23-alpine`, then a minimal `alpine:3.20` runtime image with the binary, migrations, templates, and static files.
+The Dockerfile uses a multi-stage build: Go compilation in `golang:1.26-alpine`, then a minimal `alpine:3.20` runtime image with the binary, migrations, templates, and static files.
 
 ## Helm Chart
 

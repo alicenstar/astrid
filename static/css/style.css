@@ -109,15 +109,17 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 0.5rem 1rem;
+    padding: 0 1rem;
     border: none;
     border-radius: var(--radius);
     cursor: pointer;
+    font-family: inherit;
     font-size: 0.875rem;
     text-decoration: none;
-    line-height: 1.2;
+    line-height: 1;
     box-sizing: border-box;
-    height: 2.25rem;
+    height: 2.125rem;
+    vertical-align: middle;
 }
 
 .btn-primary { background: var(--accent); color: #2d3047; font-weight: 600; }

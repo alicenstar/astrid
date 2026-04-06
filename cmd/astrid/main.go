@@ -53,7 +53,16 @@ func main() {
 	)
 	r.Get("/healthz", healthHandler.ServeHTTP)
 
-	// Routes will be added by feature tasks
+	tmpl, err := handlers.LoadTemplates("internal/templates")
+	if err != nil {
+		log.Fatalf("Failed to load templates: %v", err)
+	}
+
+	plansHandler := handlers.NewPlansHandler(db, user.ID, tmpl)
+	r.Get("/plans", plansHandler.List)
+	r.Post("/plans", plansHandler.Create)
+	r.Post("/plans/{id}/activate", plansHandler.Activate)
+	r.Post("/plans/{id}/delete", plansHandler.Delete)
 
 	log.Printf("Astrid listening on %s", cfg.Addr())
 	if err := http.ListenAndServe(cfg.Addr(), r); err != nil {

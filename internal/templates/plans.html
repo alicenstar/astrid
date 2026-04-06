@@ -1,0 +1,71 @@
+{{define "content"}}
+<h1>Calorie Plans</h1>
+
+<div class="card">
+    <h2>Create New Plan</h2>
+    <form method="POST" action="/plans">
+        <div class="form-group">
+            <label for="name">Plan Name</label>
+            <input type="text" id="name" name="name" placeholder="e.g., Cut Plan, Maintenance" required>
+        </div>
+        <div class="form-group">
+            <label>Daily Calorie Targets</label>
+            <div class="day-grid">
+                <div><label>Sun</label><input type="number" name="day_0" placeholder="kcal" min="0"></div>
+                <div><label>Mon</label><input type="number" name="day_1" placeholder="kcal" min="0"></div>
+                <div><label>Tue</label><input type="number" name="day_2" placeholder="kcal" min="0"></div>
+                <div><label>Wed</label><input type="number" name="day_3" placeholder="kcal" min="0"></div>
+                <div><label>Thu</label><input type="number" name="day_4" placeholder="kcal" min="0"></div>
+                <div><label>Fri</label><input type="number" name="day_5" placeholder="kcal" min="0"></div>
+                <div><label>Sat</label><input type="number" name="day_6" placeholder="kcal" min="0"></div>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Create Plan</button>
+    </form>
+</div>
+
+{{range .Plans}}
+<div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2>{{.Name}} {{if .IsActive}}<span class="streak-badge">Active</span>{{end}}</h2>
+        <div style="display:flex; gap:0.5rem;">
+            {{if not .IsActive}}
+            <form method="POST" action="/plans/{{.ID}}/activate">
+                <button type="submit" class="btn btn-ghost">Set Active</button>
+            </form>
+            {{end}}
+            <form method="POST" action="/plans/{{.ID}}/delete">
+                <button type="submit" class="btn btn-danger">Delete</button>
+            </form>
+        </div>
+    </div>
+    {{if .Days}}
+    <table style="margin-top:0.75rem;">
+        <tr>
+            <th style="text-align:center;">Sun</th>
+            <th style="text-align:center;">Mon</th>
+            <th style="text-align:center;">Tue</th>
+            <th style="text-align:center;">Wed</th>
+            <th style="text-align:center;">Thu</th>
+            <th style="text-align:center;">Fri</th>
+            <th style="text-align:center;">Sat</th>
+        </tr>
+        <tr>
+            {{$days := .Days}}
+            {{range seq 7}}
+            <td style="text-align:center; font-weight:600;">
+                {{with dayTarget $days .}}{{.}}{{else}}—{{end}}
+            </td>
+            {{end}}
+        </tr>
+    </table>
+    {{end}}
+</div>
+{{end}}
+
+{{if not .Plans}}
+<div class="card">
+    <p style="text-align:center; color:var(--text-muted);">No calorie plans yet. Create one above to get started.</p>
+</div>
+{{end}}
+{{end}}

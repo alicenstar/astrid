@@ -1,6 +1,7 @@
 package handlers_test
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/alicenstar/astrid/internal/auth"
 	"github.com/alicenstar/astrid/internal/handlers"
@@ -27,6 +29,7 @@ const defaultHandlerTestDSN = "postgres://astrid:astrid@localhost:5432/astrid_te
 var (
 	handlerDB   *sql.DB
 	handlerTmpl *handlers.Templates
+	handlerRDB  *redis.Client
 )
 
 func TestMain(m *testing.M) {
@@ -66,8 +69,15 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
+	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
+	if err := rdb.Ping(context.Background()).Err(); err != nil {
+		fmt.Fprintf(os.Stderr, "redis not available: %v\n", err)
+		os.Exit(1)
+	}
+
 	handlerDB = db
 	handlerTmpl = tmpl
+	handlerRDB = rdb
 	code := m.Run()
 	db.Close()
 	os.Exit(code)
@@ -102,40 +112,55 @@ func buildRouter(db *sql.DB, tmpl *handlers.Templates) http.Handler {
 	}
 
 	r := chi.NewRouter()
-	r.Use(func(next http.Handler) http.Handler {
-		return injectUserID(user.ID, next)
+
+	// Public auth routes (no auth middleware)
+	authHandler := handlers.NewAuthHandler(db, handlerRDB, tmpl, "", "", "")
+	r.Group(func(r chi.Router) {
+		r.Get("/login", authHandler.LoginPage)
+		r.Post("/login", authHandler.Login)
+		r.Get("/signup", authHandler.SignupPage)
+		r.Post("/signup", authHandler.Signup)
+		r.Post("/login/demo", authHandler.DemoLogin)
+		r.Post("/logout", authHandler.Logout)
 	})
 
-	healthHandler := handlers.NewHealthHandler(
-		handlers.NewPgPinger(db),
-		handlers.PingerFunc(func() error { return nil }),
-	)
-	r.Get("/healthz", healthHandler.ServeHTTP)
+	// Authenticated routes
+	r.Group(func(r chi.Router) {
+		r.Use(func(next http.Handler) http.Handler {
+			return injectUserID(user.ID, next)
+		})
 
-	plansHandler := handlers.NewPlansHandler(db, nil, tmpl)
-	r.Get("/plans", plansHandler.List)
-	r.Post("/plans", plansHandler.Create)
-	r.Get("/plans/{id}/edit", plansHandler.Edit)
-	r.Post("/plans/{id}/edit", plansHandler.Update)
-	r.Post("/plans/{id}/activate", plansHandler.Activate)
-	r.Post("/plans/{id}/delete", plansHandler.Delete)
+		healthHandler := handlers.NewHealthHandler(
+			handlers.NewPgPinger(db),
+			handlers.PingerFunc(func() error { return nil }),
+		)
+		r.Get("/healthz", healthHandler.ServeHTTP)
 
-	mealsHandler := handlers.NewMealsHandler(db, nil, tmpl)
-	r.Get("/log", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/log/"+time.Now().Format("2006-01-02"), http.StatusSeeOther)
+		plansHandler := handlers.NewPlansHandler(db, nil, tmpl)
+		r.Get("/plans", plansHandler.List)
+		r.Post("/plans", plansHandler.Create)
+		r.Get("/plans/{id}/edit", plansHandler.Edit)
+		r.Post("/plans/{id}/edit", plansHandler.Update)
+		r.Post("/plans/{id}/activate", plansHandler.Activate)
+		r.Post("/plans/{id}/delete", plansHandler.Delete)
+
+		mealsHandler := handlers.NewMealsHandler(db, nil, tmpl)
+		r.Get("/log", func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "/log/"+time.Now().Format("2006-01-02"), http.StatusSeeOther)
+		})
+		r.Get("/log/{date}", mealsHandler.DailyLog)
+
+		workoutsHandler := handlers.NewWorkoutsHandler(db, tmpl)
+		r.Get("/workouts", workoutsHandler.List)
+		r.Post("/workouts", workoutsHandler.Create)
+		r.Get("/workouts/{id}/edit", workoutsHandler.Edit)
+		r.Post("/workouts/{id}/edit", workoutsHandler.Update)
+		r.Post("/workouts/{id}/activate", workoutsHandler.Activate)
+		r.Post("/workouts/{id}/delete", workoutsHandler.Delete)
+
+		dashboardHandler := handlers.NewDashboardHandler(db, nil, tmpl)
+		r.Get("/", dashboardHandler.Show)
 	})
-	r.Get("/log/{date}", mealsHandler.DailyLog)
-
-	workoutsHandler := handlers.NewWorkoutsHandler(db, tmpl)
-	r.Get("/workouts", workoutsHandler.List)
-	r.Post("/workouts", workoutsHandler.Create)
-	r.Get("/workouts/{id}/edit", workoutsHandler.Edit)
-	r.Post("/workouts/{id}/edit", workoutsHandler.Update)
-	r.Post("/workouts/{id}/activate", workoutsHandler.Activate)
-	r.Post("/workouts/{id}/delete", workoutsHandler.Delete)
-
-	dashboardHandler := handlers.NewDashboardHandler(db, nil, tmpl)
-	r.Get("/", dashboardHandler.Show)
 
 	return r
 }
@@ -448,6 +473,140 @@ func TestHealthzRoute(t *testing.T) {
 	body := w.Body.String()
 	if !strings.Contains(body, `"status"`) {
 		t.Fatalf("expected JSON with status field, got: %s", body)
+	}
+}
+
+func TestLoginPageRenders(t *testing.T) {
+	r := buildRouter(handlerDB, handlerTmpl)
+	req := httptest.NewRequest(http.MethodGet, "/login", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "Log in to Astrid") {
+		t.Fatal("login page should render")
+	}
+	if !strings.Contains(body, "Demo Login") {
+		t.Fatal("login page should have demo login button")
+	}
+}
+
+func TestSignupPageRenders(t *testing.T) {
+	r := buildRouter(handlerDB, handlerTmpl)
+	req := httptest.NewRequest(http.MethodGet, "/signup", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "Create an Account") {
+		t.Fatal("signup page should render")
+	}
+}
+
+func TestDemoLoginCreatesSession(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+	r := buildRouter(handlerDB, handlerTmpl)
+
+	req := httptest.NewRequest(http.MethodPost, "/login/demo", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("expected 303, got %d", w.Code)
+	}
+
+	cookies := w.Result().Cookies()
+	found := false
+	for _, c := range cookies {
+		if c.Name == "astrid_session" && c.Value != "" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("demo login should set astrid_session cookie")
+	}
+}
+
+func TestSignupLoginFlow(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+	r := buildRouter(handlerDB, handlerTmpl)
+
+	// Signup
+	form := strings.NewReader("name=Test+User&email=test%40example.com&password=password123")
+	req := httptest.NewRequest(http.MethodPost, "/signup", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("signup: expected 303, got %d; body: %s", w.Code, w.Body.String())
+	}
+
+	// Login with same credentials
+	form = strings.NewReader("email=test%40example.com&password=password123")
+	req = httptest.NewRequest(http.MethodPost, "/login", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w = httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("login: expected 303, got %d; body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestLoginWithWrongPassword(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+	r := buildRouter(handlerDB, handlerTmpl)
+
+	models.CreateUser(handlerDB, "Test", "wrong@example.com", "correctpass")
+
+	form := strings.NewReader("email=wrong%40example.com&password=badpassword")
+	req := httptest.NewRequest(http.MethodPost, "/login", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 (re-render login), got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "Invalid email or password") {
+		t.Fatal("should show error message for wrong password")
+	}
+}
+
+func TestSignupValidation(t *testing.T) {
+	r := buildRouter(handlerDB, handlerTmpl)
+
+	form := strings.NewReader("name=Test&email=test%40example.com&password=short")
+	req := httptest.NewRequest(http.MethodPost, "/signup", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200 (re-render), got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "at least 8 characters") {
+		t.Fatal("should show password validation error")
+	}
+}
+
+func TestDashboardShowsHealthStub(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+	r := buildRouter(handlerDB, handlerTmpl)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	body := w.Body.String()
+	if !strings.Contains(body, "Coming Soon") {
+		t.Fatal("dashboard should show health data 'Coming Soon' stub")
 	}
 }
 

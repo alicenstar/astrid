@@ -7,7 +7,7 @@ replicaCount: 1
 image:
   repository: astrid
   tag: "0.1.0"
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 
 imagePullSecrets: []
 

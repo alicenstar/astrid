@@ -34,9 +34,9 @@ lint:
 build:
 	go build -o astrid ./cmd/astrid/
 
-# Build Docker image
+# Build Docker image (AMD64 for Kubernetes)
 docker:
-	docker build -t alicenstar/astrid:latest .
+	docker build --platform linux/amd64 -t alicenstar/astrid:latest .
 
 # Push Docker image
 push: docker

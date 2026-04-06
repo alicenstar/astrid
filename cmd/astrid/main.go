@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -63,6 +64,14 @@ func main() {
 	r.Post("/plans", plansHandler.Create)
 	r.Post("/plans/{id}/activate", plansHandler.Activate)
 	r.Post("/plans/{id}/delete", plansHandler.Delete)
+
+	mealsHandler := handlers.NewMealsHandler(db, user.ID, tmpl)
+	r.Get("/log", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/log/"+time.Now().Format("2006-01-02"), http.StatusSeeOther)
+	})
+	r.Get("/log/{date}", mealsHandler.DailyLog)
+	r.Post("/log/{date}/meals", mealsHandler.AddMeal)
+	r.Post("/log/{date}/meals/{mealID}/delete", mealsHandler.DeleteMeal)
 
 	log.Printf("Astrid listening on %s", cfg.Addr())
 	if err := http.ListenAndServe(cfg.Addr(), r); err != nil {

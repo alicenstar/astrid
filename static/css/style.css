@@ -22,16 +22,16 @@
 
 /* Light mode */
 [data-theme="light"] {
-    --bg: #e0e2db;
+    --bg: #f9fafb;
     --surface: #ffffff;
     --text: #2d3047;
-    --text-muted: #5c5e72;
+    --text-muted: #6b7280;
     --accent: #6b84d9;
-    --accent-light: rgba(137, 161, 239, 0.12);
+    --accent-light: rgba(137, 161, 239, 0.1);
     --success: #6b84d9;
     --warning: #d4a017;
     --danger: #f92a82;
-    --border: #c8cac3;
+    --border: #e5e7eb;
     --input-bg: #ffffff;
     color-scheme: light;
 }

@@ -74,5 +74,5 @@ func (h *DashboardHandler) Show(w http.ResponseWriter, r *http.Request) {
 		"WorkoutDone":    workoutLog != nil && workoutLog.Completed,
 		"Streak":         streak,
 	}
-	h.tmpl.Render(w, "dashboard", data)
+	h.tmpl.Render(w, "dashboard", withUserEmail(r, data))
 }

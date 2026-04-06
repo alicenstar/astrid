@@ -45,7 +45,7 @@ func (h *PlansHandler) List(w http.ResponseWriter, r *http.Request) {
 		"Plans":     plans,
 		"DayNames":  models.DayNames,
 	}
-	h.tmpl.Render(w, "plans", data)
+	h.tmpl.Render(w, "plans", withUserEmail(r, data))
 }
 
 func (h *PlansHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -121,7 +121,7 @@ func (h *PlansHandler) Edit(w http.ResponseWriter, r *http.Request) {
 		"DayTargets": dayTargets,
 		"DayNames":   models.DayNames,
 	}
-	h.tmpl.Render(w, "plan_edit", data)
+	h.tmpl.Render(w, "plan_edit", withUserEmail(r, data))
 }
 
 func (h *PlansHandler) Update(w http.ResponseWriter, r *http.Request) {

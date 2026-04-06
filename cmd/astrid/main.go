@@ -9,10 +9,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 
+	authpkg "github.com/alicenstar/astrid/internal/auth"
 	"github.com/alicenstar/astrid/internal/config"
 	"github.com/alicenstar/astrid/internal/database"
 	"github.com/alicenstar/astrid/internal/handlers"
-	"github.com/alicenstar/astrid/internal/models"
 )
 
 func main() {
@@ -34,18 +34,19 @@ func main() {
 	}
 	defer rdb.Close()
 
-	user, err := models.EnsureDefaultUser(db)
+	tmpl, err := handlers.LoadTemplates("internal/templates")
 	if err != nil {
-		log.Fatalf("Failed to ensure default user: %v", err)
+		log.Fatalf("Failed to load templates: %v", err)
 	}
-	log.Printf("Running as user: %s (%s)", user.Name, user.ID)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
+	// Static files
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
+	// Public routes
 	healthHandler := handlers.NewHealthHandler(
 		handlers.NewPgPinger(db),
 		handlers.PingerFunc(func() error {
@@ -54,45 +55,55 @@ func main() {
 	)
 	r.Get("/healthz", healthHandler.ServeHTTP)
 
-	tmpl, err := handlers.LoadTemplates("internal/templates")
-	if err != nil {
-		log.Fatalf("Failed to load templates: %v", err)
-	}
+	authHandler := handlers.NewAuthHandler(db, rdb, tmpl, cfg.GoogleClientID, cfg.GoogleSecret, cfg.GoogleRedirectURL)
+	r.Get("/login", authHandler.LoginPage)
+	r.Post("/login", authHandler.Login)
+	r.Get("/signup", authHandler.SignupPage)
+	r.Post("/signup", authHandler.Signup)
+	r.Post("/login/demo", authHandler.DemoLogin)
+	r.Post("/logout", authHandler.Logout)
+	r.Get("/auth/google", authHandler.GoogleLogin)
+	r.Get("/auth/google/callback", authHandler.GoogleCallback)
 
-	plansHandler := handlers.NewPlansHandler(db, rdb, user.ID, tmpl)
-	r.Get("/plans", plansHandler.List)
-	r.Post("/plans", plansHandler.Create)
-	r.Get("/plans/{id}/edit", plansHandler.Edit)
-	r.Post("/plans/{id}/edit", plansHandler.Update)
-	r.Post("/plans/{id}/activate", plansHandler.Activate)
-	r.Post("/plans/{id}/delete", plansHandler.Delete)
+	// Authenticated routes
+	r.Group(func(r chi.Router) {
+		r.Use(authpkg.NewAuthMiddleware(rdb))
 
-	mealsHandler := handlers.NewMealsHandler(db, rdb, user.ID, tmpl)
-	r.Get("/log", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/log/"+time.Now().Format("2006-01-02"), http.StatusSeeOther)
+		dashboardHandler := handlers.NewDashboardHandler(db, rdb, tmpl)
+		r.Get("/", dashboardHandler.Show)
+
+		plansHandler := handlers.NewPlansHandler(db, rdb, tmpl)
+		r.Get("/plans", plansHandler.List)
+		r.Post("/plans", plansHandler.Create)
+		r.Get("/plans/{id}/edit", plansHandler.Edit)
+		r.Post("/plans/{id}/edit", plansHandler.Update)
+		r.Post("/plans/{id}/activate", plansHandler.Activate)
+		r.Post("/plans/{id}/delete", plansHandler.Delete)
+
+		mealsHandler := handlers.NewMealsHandler(db, rdb, tmpl)
+		r.Get("/log", func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "/log/"+time.Now().Format("2006-01-02"), http.StatusSeeOther)
+		})
+		r.Get("/log/{date}", mealsHandler.DailyLog)
+		r.Post("/log/{date}/meals", mealsHandler.AddMeal)
+		r.Post("/log/{date}/meals/{mealID}/delete", mealsHandler.DeleteMeal)
+
+		workoutsHandler := handlers.NewWorkoutsHandler(db, tmpl)
+		r.Get("/workouts", workoutsHandler.List)
+		r.Post("/workouts", workoutsHandler.Create)
+		r.Get("/workouts/{id}/edit", workoutsHandler.Edit)
+		r.Post("/workouts/{id}/edit", workoutsHandler.Update)
+		r.Post("/workouts/{id}/activate", workoutsHandler.Activate)
+		r.Post("/workouts/{id}/delete", workoutsHandler.Delete)
+		r.Post("/workouts/days/{dayID}/exercises", workoutsHandler.AddExercise)
+		r.Post("/workouts/exercises/{exerciseID}/delete", workoutsHandler.DeleteExercise)
+
+		workoutLogsHandler := handlers.NewWorkoutLogsHandler(db, rdb)
+		r.Post("/workouts/toggle-today", workoutLogsHandler.Toggle)
+
+		summaryHandler := handlers.NewSummaryHandler(db, rdb, tmpl)
+		r.Get("/summary", summaryHandler.Show)
 	})
-	r.Get("/log/{date}", mealsHandler.DailyLog)
-	r.Post("/log/{date}/meals", mealsHandler.AddMeal)
-	r.Post("/log/{date}/meals/{mealID}/delete", mealsHandler.DeleteMeal)
-
-	workoutsHandler := handlers.NewWorkoutsHandler(db, user.ID, tmpl)
-	r.Get("/workouts", workoutsHandler.List)
-	r.Post("/workouts", workoutsHandler.Create)
-	r.Get("/workouts/{id}/edit", workoutsHandler.Edit)
-	r.Post("/workouts/{id}/edit", workoutsHandler.Update)
-	r.Post("/workouts/{id}/activate", workoutsHandler.Activate)
-	r.Post("/workouts/{id}/delete", workoutsHandler.Delete)
-	r.Post("/workouts/days/{dayID}/exercises", workoutsHandler.AddExercise)
-	r.Post("/workouts/exercises/{exerciseID}/delete", workoutsHandler.DeleteExercise)
-
-	workoutLogsHandler := handlers.NewWorkoutLogsHandler(db, rdb, user.ID)
-	r.Post("/workouts/toggle-today", workoutLogsHandler.Toggle)
-
-	dashboardHandler := handlers.NewDashboardHandler(db, rdb, user.ID, tmpl)
-	r.Get("/", dashboardHandler.Show)
-
-	summaryHandler := handlers.NewSummaryHandler(db, rdb, user.ID, tmpl)
-	r.Get("/summary", summaryHandler.Show)
 
 	log.Printf("Astrid listening on %s", cfg.Addr())
 	if err := http.ListenAndServe(cfg.Addr(), r); err != nil {

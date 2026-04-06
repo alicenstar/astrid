@@ -69,7 +69,7 @@ func (h *MealsHandler) DailyLog(w http.ResponseWriter, r *http.Request) {
 		"PrevDate":       prevDate,
 		"NextDate":       nextDate,
 	}
-	h.tmpl.Render(w, "log", data)
+	h.tmpl.Render(w, "log", withUserEmail(r, data))
 }
 
 func (h *MealsHandler) AddMeal(w http.ResponseWriter, r *http.Request) {

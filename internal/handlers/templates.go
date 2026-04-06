@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"github.com/alicenstar/astrid/internal/auth"
 	"github.com/alicenstar/astrid/internal/models"
 )
 
@@ -38,6 +39,11 @@ func (t *Templates) RenderError(w http.ResponseWriter, message string, status in
 		"Error":     message,
 	}
 	tmpl.ExecuteTemplate(w, "layout", data)
+}
+
+func withUserEmail(r *http.Request, data map[string]any) map[string]any {
+	data["UserEmail"] = auth.EmailFromContext(r.Context())
+	return data
 }
 
 func LoadTemplates(templatesDir string) (*Templates, error) {

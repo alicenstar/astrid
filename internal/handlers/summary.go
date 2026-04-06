@@ -81,5 +81,5 @@ func (h *SummaryHandler) Show(w http.ResponseWriter, r *http.Request) {
 		"WeekAdherence": weekAdherence,
 		"WeekOf":        weekStart.Format("January 2"),
 	}
-	h.tmpl.Render(w, "summary", data)
+	h.tmpl.Render(w, "summary", withUserEmail(r, data))
 }

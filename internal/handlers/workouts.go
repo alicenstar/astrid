@@ -34,7 +34,7 @@ func (h *WorkoutsHandler) List(w http.ResponseWriter, r *http.Request) {
 		"Splits":    splits,
 		"DayNames":  models.DayNames,
 	}
-	h.tmpl.Render(w, "workouts", data)
+	h.tmpl.Render(w, "workouts", withUserEmail(r, data))
 }
 
 func (h *WorkoutsHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -91,7 +91,7 @@ func (h *WorkoutsHandler) Edit(w http.ResponseWriter, r *http.Request) {
 		"DayLabels": dayLabels,
 		"DayNames":  models.DayNames,
 	}
-	h.tmpl.Render(w, "workout_edit", data)
+	h.tmpl.Render(w, "workout_edit", withUserEmail(r, data))
 }
 
 func (h *WorkoutsHandler) Update(w http.ResponseWriter, r *http.Request) {

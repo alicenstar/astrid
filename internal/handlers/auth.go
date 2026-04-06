@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/oauth2"
@@ -160,13 +162,21 @@ func (h *AuthHandler) Signup(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) DemoLogin(w http.ResponseWriter, r *http.Request) {
 	user, err := models.EnsureDefaultUser(h.db)
 	if err != nil {
+		log.Printf("DemoLogin: EnsureDefaultUser failed: %v", err)
 		h.tmpl.RenderError(w, "Could not create demo session", http.StatusInternalServerError)
 		return
 	}
 	if err := models.SeedDemoData(h.db, user.ID); err != nil {
+		log.Printf("DemoLogin: SeedDemoData failed: %v", err)
 		h.tmpl.RenderError(w, "Could not set up demo data", http.StatusInternalServerError)
 		return
 	}
+	// Invalidate cached daily summaries for seeded dates
+	today := time.Now()
+	for i := 0; i < 5; i++ {
+		models.InvalidateDailyCache(h.rdb, user.ID, today.AddDate(0, 0, -i))
+	}
+	models.InvalidateStreakCache(h.rdb, user.ID)
 	sessionID, _ := auth.CreateSession(h.rdb, user.ID, user.Email)
 	h.setSessionCookie(w, sessionID)
 	http.Redirect(w, r, "/", http.StatusSeeOther)

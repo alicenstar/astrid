@@ -1,7 +1,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 /* Dark mode (default) */
-:root {
+:root, [data-theme="dark"] {
     --bg: #0f0f14;
     --surface: #1a1a24;
     --text: #eae8f0;
@@ -19,22 +19,34 @@
 }
 
 /* Light mode */
-@media (prefers-color-scheme: light) {
-    :root {
-        --bg: #f6f5fb;
-        --surface: #ffffff;
-        --text: #1a1a2e;
-        --text-muted: #6b6888;
-        --accent: #8338ec;
-        --accent-light: rgba(131, 56, 236, 0.1);
-        --success: #3a86ff;
-        --warning: #fb5607;
-        --danger: #ff006e;
-        --orange: #fb5607;
-        --border: #e2e0ed;
-        --input-bg: #ffffff;
-        color-scheme: light;
-    }
+[data-theme="light"] {
+    --bg: #f6f5fb;
+    --surface: #ffffff;
+    --text: #1a1a2e;
+    --text-muted: #6b6888;
+    --accent: #8338ec;
+    --accent-light: rgba(131, 56, 236, 0.1);
+    --success: #3a86ff;
+    --warning: #fb5607;
+    --danger: #ff006e;
+    --orange: #fb5607;
+    --border: #e2e0ed;
+    --input-bg: #ffffff;
+    color-scheme: light;
+}
+
+.theme-toggle {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    font-size: 1rem;
+    line-height: 1;
+    margin-left: auto;
+}
+.theme-toggle:hover {
+    border-color: var(--accent);
 }
 
 body {

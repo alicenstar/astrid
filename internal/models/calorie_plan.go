@@ -117,10 +117,14 @@ func CreateCaloriePlan(db *sql.DB, userID uuid.UUID, name string, targets map[in
 	}
 	defer tx.Rollback()
 
+	// Auto-activate if no active plan exists
+	var hasActive bool
+	tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM calorie_plans WHERE user_id = $1 AND is_active = true)`, userID).Scan(&hasActive)
+
 	var p CaloriePlan
 	err = tx.QueryRow(
-		`INSERT INTO calorie_plans (user_id, name) VALUES ($1, $2) RETURNING id, user_id, name, is_active, created_at`,
-		userID, name,
+		`INSERT INTO calorie_plans (user_id, name, is_active) VALUES ($1, $2, $3) RETURNING id, user_id, name, is_active, created_at`,
+		userID, name, !hasActive,
 	).Scan(&p.ID, &p.UserID, &p.Name, &p.IsActive, &p.CreatedAt)
 	if err != nil {
 		return nil, err

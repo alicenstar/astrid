@@ -59,7 +59,7 @@ func main() {
 		log.Fatalf("Failed to load templates: %v", err)
 	}
 
-	plansHandler := handlers.NewPlansHandler(db, user.ID, tmpl)
+	plansHandler := handlers.NewPlansHandler(db, rdb, user.ID, tmpl)
 	r.Get("/plans", plansHandler.List)
 	r.Post("/plans", plansHandler.Create)
 	r.Post("/plans/{id}/activate", plansHandler.Activate)

@@ -4,21 +4,32 @@ import (
 	"database/sql"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/alicenstar/astrid/internal/models"
 )
 
 type PlansHandler struct {
 	db   *sql.DB
+	rdb  *redis.Client
 	uid  uuid.UUID
 	tmpl *Templates
 }
 
-func NewPlansHandler(db *sql.DB, uid uuid.UUID, tmpl *Templates) *PlansHandler {
-	return &PlansHandler{db: db, uid: uid, tmpl: tmpl}
+func NewPlansHandler(db *sql.DB, rdb *redis.Client, uid uuid.UUID, tmpl *Templates) *PlansHandler {
+	return &PlansHandler{db: db, rdb: rdb, uid: uid, tmpl: tmpl}
+}
+
+func (h *PlansHandler) invalidateWeekCache() {
+	today := time.Now()
+	for i := 0; i < 7; i++ {
+		date := today.AddDate(0, 0, -int(today.Weekday())+i)
+		models.InvalidateDailyCache(h.rdb, h.uid, date)
+	}
 }
 
 func (h *PlansHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -69,6 +80,7 @@ func (h *PlansHandler) Create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	h.invalidateWeekCache()
 	http.Redirect(w, r, "/plans", http.StatusSeeOther)
 }
 
@@ -82,6 +94,7 @@ func (h *PlansHandler) Activate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	h.invalidateWeekCache()
 	http.Redirect(w, r, "/plans", http.StatusSeeOther)
 }
 
@@ -95,5 +108,6 @@ func (h *PlansHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	h.invalidateWeekCache()
 	http.Redirect(w, r, "/plans", http.StatusSeeOther)
 }

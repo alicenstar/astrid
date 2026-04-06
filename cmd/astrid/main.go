@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
 
@@ -9,6 +10,7 @@ import (
 
 	"github.com/alicenstar/astrid/internal/config"
 	"github.com/alicenstar/astrid/internal/database"
+	"github.com/alicenstar/astrid/internal/handlers"
 )
 
 func main() {
@@ -35,6 +37,14 @@ func main() {
 	r.Use(middleware.Recoverer)
 
 	r.Handle("/static/*", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+
+	healthHandler := handlers.NewHealthHandler(
+		handlers.NewPgPinger(db),
+		handlers.PingerFunc(func() error {
+			return rdb.Ping(context.Background()).Err()
+		}),
+	)
+	r.Get("/healthz", healthHandler.ServeHTTP)
 
 	// Routes will be added by feature tasks
 

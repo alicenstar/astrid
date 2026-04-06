@@ -65,7 +65,7 @@ func main() {
 	r.Post("/plans/{id}/activate", plansHandler.Activate)
 	r.Post("/plans/{id}/delete", plansHandler.Delete)
 
-	mealsHandler := handlers.NewMealsHandler(db, user.ID, tmpl)
+	mealsHandler := handlers.NewMealsHandler(db, rdb, user.ID, tmpl)
 	r.Get("/log", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/log/"+time.Now().Format("2006-01-02"), http.StatusSeeOther)
 	})
@@ -81,13 +81,13 @@ func main() {
 	r.Post("/workouts/days/{dayID}/exercises", workoutsHandler.AddExercise)
 	r.Post("/workouts/exercises/{exerciseID}/delete", workoutsHandler.DeleteExercise)
 
-	workoutLogsHandler := handlers.NewWorkoutLogsHandler(db, user.ID)
+	workoutLogsHandler := handlers.NewWorkoutLogsHandler(db, rdb, user.ID)
 	r.Post("/workouts/toggle-today", workoutLogsHandler.Toggle)
 
-	dashboardHandler := handlers.NewDashboardHandler(db, user.ID, tmpl)
+	dashboardHandler := handlers.NewDashboardHandler(db, rdb, user.ID, tmpl)
 	r.Get("/", dashboardHandler.Show)
 
-	summaryHandler := handlers.NewSummaryHandler(db, user.ID, tmpl)
+	summaryHandler := handlers.NewSummaryHandler(db, rdb, user.ID, tmpl)
 	r.Get("/summary", summaryHandler.Show)
 
 	log.Printf("Astrid listening on %s", cfg.Addr())

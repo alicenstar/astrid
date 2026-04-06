@@ -9,18 +9,20 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/alicenstar/astrid/internal/models"
 )
 
 type MealsHandler struct {
 	db   *sql.DB
+	rdb  *redis.Client
 	uid  uuid.UUID
 	tmpl *template.Template
 }
 
-func NewMealsHandler(db *sql.DB, uid uuid.UUID, tmpl *template.Template) *MealsHandler {
-	return &MealsHandler{db: db, uid: uid, tmpl: tmpl}
+func NewMealsHandler(db *sql.DB, rdb *redis.Client, uid uuid.UUID, tmpl *template.Template) *MealsHandler {
+	return &MealsHandler{db: db, rdb: rdb, uid: uid, tmpl: tmpl}
 }
 
 func (h *MealsHandler) DailyLog(w http.ResponseWriter, r *http.Request) {
@@ -43,7 +45,7 @@ func (h *MealsHandler) DailyLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	summary, err := models.GetDailySummary(h.db, h.uid, date, int(date.Weekday()))
+	summary, err := models.GetDailySummary(h.db, h.rdb, h.uid, date, int(date.Weekday()))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -97,11 +99,18 @@ func (h *MealsHandler) AddMeal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	models.InvalidateDailyCache(h.rdb, h.uid, date)
 	http.Redirect(w, r, "/log/"+dateStr, http.StatusSeeOther)
 }
 
 func (h *MealsHandler) DeleteMeal(w http.ResponseWriter, r *http.Request) {
 	dateStr := chi.URLParam(r, "date")
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		http.Error(w, "invalid date", http.StatusBadRequest)
+		return
+	}
+
 	mealID, err := uuid.Parse(chi.URLParam(r, "mealID"))
 	if err != nil {
 		http.Error(w, "invalid meal id", http.StatusBadRequest)
@@ -113,5 +122,6 @@ func (h *MealsHandler) DeleteMeal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	models.InvalidateDailyCache(h.rdb, h.uid, date)
 	http.Redirect(w, r, "/log/"+dateStr, http.StatusSeeOther)
 }

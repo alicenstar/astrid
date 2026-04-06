@@ -1,11 +1,14 @@
 package models
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 type DailyLog struct {
@@ -104,7 +107,65 @@ func DeleteMeal(db *sql.DB, mealID uuid.UUID) error {
 	return err
 }
 
-func GetDailySummary(db *sql.DB, userID uuid.UUID, date time.Time, dayOfWeek int) (*DailySummary, error) {
+func CacheDailySummary(rdb *redis.Client, userID uuid.UUID, date time.Time, s *DailySummary) {
+	ctx := context.Background()
+	dateStr := date.Format("2006-01-02")
+	prefix := fmt.Sprintf("daily:%s:%s", userID, dateStr)
+	pipe := rdb.Pipeline()
+	pipe.Set(ctx, prefix+":cals", strconv.Itoa(s.TotalCalories), 24*time.Hour)
+	pipe.HSet(ctx, prefix+":macros",
+		"protein", fmt.Sprintf("%.1f", s.TotalProtein),
+		"fiber", fmt.Sprintf("%.1f", s.TotalFiber),
+		"cholesterol", fmt.Sprintf("%.1f", s.TotalCholesterol),
+	)
+	pipe.Expire(ctx, prefix+":macros", 24*time.Hour)
+	pipe.Exec(ctx)
+}
+
+func InvalidateDailyCache(rdb *redis.Client, userID uuid.UUID, date time.Time) {
+	ctx := context.Background()
+	dateStr := date.Format("2006-01-02")
+	prefix := fmt.Sprintf("daily:%s:%s", userID, dateStr)
+	rdb.Del(ctx, prefix+":cals", prefix+":macros")
+}
+
+func GetCachedDailySummary(rdb *redis.Client, userID uuid.UUID, date time.Time) (*DailySummary, bool) {
+	ctx := context.Background()
+	dateStr := date.Format("2006-01-02")
+	prefix := fmt.Sprintf("daily:%s:%s", userID, dateStr)
+
+	calsStr, err := rdb.Get(ctx, prefix+":cals").Result()
+	if err != nil {
+		return nil, false
+	}
+	cals, _ := strconv.Atoi(calsStr)
+
+	macros, err := rdb.HGetAll(ctx, prefix+":macros").Result()
+	if err != nil || len(macros) == 0 {
+		return nil, false
+	}
+
+	protein, _ := strconv.ParseFloat(macros["protein"], 64)
+	fiber, _ := strconv.ParseFloat(macros["fiber"], 64)
+	cholesterol, _ := strconv.ParseFloat(macros["cholesterol"], 64)
+
+	return &DailySummary{
+		TotalCalories:    cals,
+		TotalProtein:     protein,
+		TotalFiber:       fiber,
+		TotalCholesterol: cholesterol,
+	}, true
+}
+
+func GetDailySummary(db *sql.DB, rdb *redis.Client, userID uuid.UUID, date time.Time, dayOfWeek int) (*DailySummary, error) {
+	// Check cache first
+	if rdb != nil {
+		if cached, ok := GetCachedDailySummary(rdb, userID, date); ok {
+			cached.CalorieTarget, _ = GetTodayCalorieTarget(db, userID, dayOfWeek)
+			return cached, nil
+		}
+	}
+
 	dateStr := date.Format("2006-01-02")
 	var s DailySummary
 	err := db.QueryRow(
@@ -122,6 +183,11 @@ func GetDailySummary(db *sql.DB, userID uuid.UUID, date time.Time, dayOfWeek int
 	s.CalorieTarget, err = GetTodayCalorieTarget(db, userID, dayOfWeek)
 	if err != nil {
 		return nil, err
+	}
+
+	// Cache the result
+	if rdb != nil {
+		CacheDailySummary(rdb, userID, date, &s)
 	}
 	return &s, nil
 }

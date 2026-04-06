@@ -1,10 +1,14 @@
 package models
 
 import (
+	"context"
 	"database/sql"
+	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 type WorkoutLog struct {
@@ -34,7 +38,30 @@ func GetWorkoutLog(db *sql.DB, userID uuid.UUID, date time.Time) (*WorkoutLog, e
 	return &wl, nil
 }
 
-func ToggleWorkoutComplete(db *sql.DB, userID uuid.UUID, date time.Time, splitDayID *uuid.UUID) error {
+func CacheStreak(rdb *redis.Client, userID uuid.UUID, streak int) {
+	ctx := context.Background()
+	key := fmt.Sprintf("streak:%s:workouts", userID)
+	rdb.Set(ctx, key, strconv.Itoa(streak), 24*time.Hour)
+}
+
+func InvalidateStreakCache(rdb *redis.Client, userID uuid.UUID) {
+	ctx := context.Background()
+	key := fmt.Sprintf("streak:%s:workouts", userID)
+	rdb.Del(ctx, key)
+}
+
+func GetCachedStreak(rdb *redis.Client, userID uuid.UUID) (int, bool) {
+	ctx := context.Background()
+	key := fmt.Sprintf("streak:%s:workouts", userID)
+	val, err := rdb.Get(ctx, key).Result()
+	if err != nil {
+		return 0, false
+	}
+	streak, _ := strconv.Atoi(val)
+	return streak, true
+}
+
+func ToggleWorkoutComplete(db *sql.DB, rdb *redis.Client, userID uuid.UUID, date time.Time, splitDayID *uuid.UUID) error {
 	dateStr := date.Format("2006-01-02")
 	existing, err := GetWorkoutLog(db, userID, date)
 	if err != nil {
@@ -46,17 +73,26 @@ func ToggleWorkoutComplete(db *sql.DB, userID uuid.UUID, date time.Time, splitDa
 			`UPDATE workout_logs SET completed = NOT completed WHERE id = $1`,
 			existing.ID,
 		)
-		return err
+	} else {
+		_, err = db.Exec(
+			`INSERT INTO workout_logs (user_id, date, split_day_id, completed) VALUES ($1, $2, $3, true)`,
+			userID, dateStr, splitDayID,
+		)
 	}
-
-	_, err = db.Exec(
-		`INSERT INTO workout_logs (user_id, date, split_day_id, completed) VALUES ($1, $2, $3, true)`,
-		userID, dateStr, splitDayID,
-	)
+	if err == nil && rdb != nil {
+		InvalidateStreakCache(rdb, userID)
+	}
 	return err
 }
 
-func GetWorkoutStreak(db *sql.DB, userID uuid.UUID) (int, error) {
+func GetWorkoutStreak(db *sql.DB, rdb *redis.Client, userID uuid.UUID) (int, error) {
+	// Check cache first
+	if rdb != nil {
+		if cached, ok := GetCachedStreak(rdb, userID); ok {
+			return cached, nil
+		}
+	}
+
 	rows, err := db.Query(
 		`SELECT date FROM workout_logs WHERE user_id = $1 AND completed = true ORDER BY date DESC`,
 		userID,
@@ -91,6 +127,11 @@ func GetWorkoutStreak(db *sql.DB, userID uuid.UUID) (int, error) {
 		} else {
 			break
 		}
+	}
+
+	// Cache the result
+	if rdb != nil {
+		CacheStreak(rdb, userID, streak)
 	}
 	return streak, nil
 }

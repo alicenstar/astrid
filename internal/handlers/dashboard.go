@@ -7,18 +7,20 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/alicenstar/astrid/internal/models"
 )
 
 type DashboardHandler struct {
 	db   *sql.DB
+	rdb  *redis.Client
 	uid  uuid.UUID
 	tmpl *template.Template
 }
 
-func NewDashboardHandler(db *sql.DB, uid uuid.UUID, tmpl *template.Template) *DashboardHandler {
-	return &DashboardHandler{db: db, uid: uid, tmpl: tmpl}
+func NewDashboardHandler(db *sql.DB, rdb *redis.Client, uid uuid.UUID, tmpl *template.Template) *DashboardHandler {
+	return &DashboardHandler{db: db, rdb: rdb, uid: uid, tmpl: tmpl}
 }
 
 func (h *DashboardHandler) Show(w http.ResponseWriter, r *http.Request) {
@@ -26,7 +28,7 @@ func (h *DashboardHandler) Show(w http.ResponseWriter, r *http.Request) {
 	dayOfWeek := int(today.Weekday())
 
 	// Calorie summary
-	summary, err := models.GetDailySummary(h.db, h.uid, today, dayOfWeek)
+	summary, err := models.GetDailySummary(h.db, h.rdb, h.uid, today, dayOfWeek)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -47,7 +49,7 @@ func (h *DashboardHandler) Show(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Streak
-	streak, err := models.GetWorkoutStreak(h.db, h.uid)
+	streak, err := models.GetWorkoutStreak(h.db, h.rdb, h.uid)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

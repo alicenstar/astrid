@@ -84,6 +84,9 @@ func main() {
 	workoutLogsHandler := handlers.NewWorkoutLogsHandler(db, user.ID)
 	r.Post("/workouts/toggle-today", workoutLogsHandler.Toggle)
 
+	summaryHandler := handlers.NewSummaryHandler(db, user.ID, tmpl)
+	r.Get("/summary", summaryHandler.Show)
+
 	log.Printf("Astrid listening on %s", cfg.Addr())
 	if err := http.ListenAndServe(cfg.Addr(), r); err != nil {
 		log.Fatal(err)

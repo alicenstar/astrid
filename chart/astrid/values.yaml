@@ -1,0 +1,84 @@
+replicaCount: 1
+
+image:
+  repository: astrid
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: astrid.fit
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# --- Embedded PostgreSQL (Bitnami subchart) ---
+postgresql:
+  enabled: true
+  auth:
+    username: astrid
+    password: astrid
+    database: astrid
+  primary:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+# --- BYO PostgreSQL ---
+externalDatabase:
+  host: ""
+  port: 5432
+  user: ""
+  password: ""
+  database: "astrid"
+
+# --- Embedded Redis (Bitnami subchart) ---
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 250m
+        memory: 256Mi
+
+# --- BYO Redis ---
+externalRedis:
+  host: ""
+  port: 6379
+  password: ""
+
+# --- TLS ---
+tls:
+  mode: ""
+  secretName: ""
+  certManager:
+    issuerName: letsencrypt-prod
+    issuerKind: ClusterIssuer

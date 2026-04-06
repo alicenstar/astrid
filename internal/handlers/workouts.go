@@ -24,7 +24,7 @@ func NewWorkoutsHandler(db *sql.DB, uid uuid.UUID, tmpl *Templates) *WorkoutsHan
 func (h *WorkoutsHandler) List(w http.ResponseWriter, r *http.Request) {
 	splits, err := models.ListWorkoutSplits(h.db, h.uid)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.tmpl.RenderError(w, "Could not load workout splits", http.StatusInternalServerError)
 		return
 	}
 	data := map[string]any{
@@ -33,12 +33,7 @@ func (h *WorkoutsHandler) List(w http.ResponseWriter, r *http.Request) {
 		"Splits":    splits,
 		"DayNames":  models.DayNames,
 	}
-	tmpl, err := h.tmpl.Render("workouts", data)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	tmpl.ExecuteTemplate(w, "layout", data)
+	h.tmpl.Render(w, "workouts", data)
 }
 
 func (h *WorkoutsHandler) Create(w http.ResponseWriter, r *http.Request) {

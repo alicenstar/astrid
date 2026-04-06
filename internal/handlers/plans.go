@@ -35,7 +35,7 @@ func (h *PlansHandler) invalidateWeekCache() {
 func (h *PlansHandler) List(w http.ResponseWriter, r *http.Request) {
 	plans, err := models.ListCaloriePlans(h.db, h.uid)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.tmpl.RenderError(w, "Could not load calorie plans", http.StatusInternalServerError)
 		return
 	}
 	data := map[string]any{
@@ -44,12 +44,7 @@ func (h *PlansHandler) List(w http.ResponseWriter, r *http.Request) {
 		"Plans":     plans,
 		"DayNames":  models.DayNames,
 	}
-	tmpl, err := h.tmpl.Render("plans", data)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	tmpl.ExecuteTemplate(w, "layout", data)
+	h.tmpl.Render(w, "plans", data)
 }
 
 func (h *PlansHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -77,7 +72,7 @@ func (h *PlansHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 	_, err := models.CreateCaloriePlan(h.db, h.uid, name, targets)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.tmpl.RenderError(w, "Could not create calorie plan", http.StatusInternalServerError)
 		return
 	}
 	h.invalidateWeekCache()
@@ -91,7 +86,7 @@ func (h *PlansHandler) Activate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := models.SetActivePlan(h.db, h.uid, planID); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.tmpl.RenderError(w, "Could not activate plan", http.StatusInternalServerError)
 		return
 	}
 	h.invalidateWeekCache()
@@ -105,7 +100,7 @@ func (h *PlansHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := models.DeleteCaloriePlan(h.db, planID, h.uid); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.tmpl.RenderError(w, "Could not delete plan", http.StatusInternalServerError)
 		return
 	}
 	h.invalidateWeekCache()

@@ -46,7 +46,7 @@ func (h *SummaryHandler) Show(w http.ResponseWriter, r *http.Request) {
 
 		summary, err := models.GetDailySummary(h.db, h.rdb, h.uid, date, dayOfWeek)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			h.tmpl.RenderError(w, "Could not load weekly summary", http.StatusInternalServerError)
 			return
 		}
 
@@ -81,10 +81,5 @@ func (h *SummaryHandler) Show(w http.ResponseWriter, r *http.Request) {
 		"WeekAdherence": weekAdherence,
 		"WeekOf":        weekStart.Format("January 2"),
 	}
-	tmpl, err := h.tmpl.Render("summary", data)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	tmpl.ExecuteTemplate(w, "layout", data)
+	h.tmpl.Render(w, "summary", data)
 }

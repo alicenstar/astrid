@@ -29,28 +29,28 @@ func (h *DashboardHandler) Show(w http.ResponseWriter, r *http.Request) {
 	// Calorie summary
 	summary, err := models.GetDailySummary(h.db, h.rdb, h.uid, today, dayOfWeek)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.tmpl.RenderError(w, "Could not load dashboard data", http.StatusInternalServerError)
 		return
 	}
 
 	// Today's workout
 	splitDay, err := models.GetTodaySplitDay(h.db, h.uid, dayOfWeek)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.tmpl.RenderError(w, "Could not load dashboard data", http.StatusInternalServerError)
 		return
 	}
 
 	// Workout log for today
 	workoutLog, err := models.GetWorkoutLog(h.db, h.uid, today)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.tmpl.RenderError(w, "Could not load dashboard data", http.StatusInternalServerError)
 		return
 	}
 
 	// Streak
 	streak, err := models.GetWorkoutStreak(h.db, h.rdb, h.uid)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.tmpl.RenderError(w, "Could not load dashboard data", http.StatusInternalServerError)
 		return
 	}
 
@@ -65,10 +65,5 @@ func (h *DashboardHandler) Show(w http.ResponseWriter, r *http.Request) {
 		"WorkoutDone":  workoutLog != nil && workoutLog.Completed,
 		"Streak":       streak,
 	}
-	tmpl, err := h.tmpl.Render("dashboard", data)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	tmpl.ExecuteTemplate(w, "layout", data)
+	h.tmpl.Render(w, "dashboard", data)
 }

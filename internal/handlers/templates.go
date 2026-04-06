@@ -3,6 +3,8 @@ package handlers
 import (
 	"fmt"
 	"html/template"
+	"log"
+	"net/http"
 	"path/filepath"
 
 	"github.com/alicenstar/astrid/internal/models"
@@ -12,12 +14,30 @@ type Templates struct {
 	pages map[string]*template.Template
 }
 
-func (t *Templates) Render(name string, data any) (*template.Template, error) {
+func (t *Templates) Render(w http.ResponseWriter, name string, data map[string]any) {
 	tmpl, ok := t.pages[name]
 	if !ok {
-		return nil, fmt.Errorf("template %q not found", name)
+		http.Error(w, "page not found", http.StatusInternalServerError)
+		return
 	}
-	return tmpl, nil
+	if err := tmpl.ExecuteTemplate(w, "layout", data); err != nil {
+		log.Printf("template render error: %v", err)
+	}
+}
+
+func (t *Templates) RenderError(w http.ResponseWriter, message string, status int) {
+	tmpl, ok := t.pages["error"]
+	if !ok {
+		http.Error(w, message, status)
+		return
+	}
+	w.WriteHeader(status)
+	data := map[string]any{
+		"Title":     "Error",
+		"ActiveNav": "",
+		"Error":     message,
+	}
+	tmpl.ExecuteTemplate(w, "layout", data)
 }
 
 func LoadTemplates(templatesDir string) (*Templates, error) {
@@ -61,7 +81,7 @@ func LoadTemplates(templatesDir string) (*Templates, error) {
 	}
 
 	layoutFile := filepath.Join(templatesDir, "layout.html")
-	pages := []string{"dashboard", "plans", "log", "summary", "workouts"}
+	pages := []string{"dashboard", "plans", "log", "summary", "workouts", "error"}
 
 	t := &Templates{pages: make(map[string]*template.Template)}
 

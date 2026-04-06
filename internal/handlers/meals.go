@@ -40,13 +40,13 @@ func (h *MealsHandler) DailyLog(w http.ResponseWriter, r *http.Request) {
 
 	log, err := models.GetOrCreateDailyLog(h.db, h.uid, date)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.tmpl.RenderError(w, "Could not load daily log", http.StatusInternalServerError)
 		return
 	}
 
 	summary, err := models.GetDailySummary(h.db, h.rdb, h.uid, date, int(date.Weekday()))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		h.tmpl.RenderError(w, "Could not load daily log", http.StatusInternalServerError)
 		return
 	}
 
@@ -64,12 +64,7 @@ func (h *MealsHandler) DailyLog(w http.ResponseWriter, r *http.Request) {
 		"PrevDate":    prevDate,
 		"NextDate":    nextDate,
 	}
-	tmpl, err := h.tmpl.Render("log", data)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	tmpl.ExecuteTemplate(w, "layout", data)
+	h.tmpl.Render(w, "log", data)
 }
 
 func (h *MealsHandler) AddMeal(w http.ResponseWriter, r *http.Request) {

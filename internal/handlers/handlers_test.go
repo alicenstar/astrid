@@ -20,7 +20,7 @@ import (
 	"github.com/alicenstar/astrid/internal/models"
 )
 
-const defaultHandlerTestDSN = "postgres://astrid:astrid@localhost:5432/astrid?sslmode=disable"
+const defaultHandlerTestDSN = "postgres://astrid:astrid@localhost:5432/astrid_test?sslmode=disable"
 
 var (
 	handlerDB   *sql.DB
@@ -158,6 +158,104 @@ func TestLogRedirect(t *testing.T) {
 	expected := "/log/" + today
 	if !strings.HasPrefix(location, expected) {
 		t.Fatalf("expected redirect to %s, got %s", expected, location)
+	}
+}
+
+func TestDashboardShowsActivePlan(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+
+	// Create user and active plan with targets
+	user, err := models.EnsureDefaultUser(handlerDB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	targets := map[int]int{0: 2000, 1: 2200, 2: 2200, 3: 2000, 4: 2200, 5: 2200, 6: 1800}
+	_, err = models.CreateCaloriePlan(handlerDB, user.ID, "Test Plan", targets)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r := buildRouter(handlerDB, handlerTmpl)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	body := w.Body.String()
+	// Should NOT contain "No active calorie plan"
+	if strings.Contains(body, "No active calorie plan") {
+		t.Fatal("dashboard shows 'No active calorie plan' but an active plan with targets exists")
+	}
+	// Should contain "kcal" (from the progress bar)
+	if !strings.Contains(body, "kcal") {
+		t.Fatal("dashboard should show calorie target in kcal")
+	}
+}
+
+func TestDashboardNoActivePlan(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+
+	r := buildRouter(handlerDB, handlerTmpl)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	body := w.Body.String()
+	if !strings.Contains(body, "No active calorie plan") {
+		t.Fatal("dashboard should show 'No active calorie plan' when none exists")
+	}
+}
+
+func TestLogShowsCalorieProgress(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+
+	user, err := models.EnsureDefaultUser(handlerDB)
+	if err != nil {
+		t.Fatal(err)
+	}
+	targets := map[int]int{0: 2000, 1: 2200, 2: 2200, 3: 2000, 4: 2200, 5: 2200, 6: 1800}
+	_, err = models.CreateCaloriePlan(handlerDB, user.ID, "Test Plan", targets)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r := buildRouter(handlerDB, handlerTmpl)
+	today := time.Now().Format("2006-01-02")
+	req := httptest.NewRequest(http.MethodGet, "/log/"+today, nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	body := w.Body.String()
+	if strings.Contains(body, "No active calorie plan") {
+		t.Fatal("log page shows 'No active calorie plan' but an active plan exists")
+	}
+}
+
+func TestDarkModeToggleExists(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+	r := buildRouter(handlerDB, handlerTmpl)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	body := w.Body.String()
+	if !strings.Contains(body, "theme-toggle") {
+		t.Fatal("page should contain theme-toggle button")
+	}
+	if !strings.Contains(body, `data-theme="dark"`) {
+		t.Fatal("page should default to dark theme")
 	}
 }
 

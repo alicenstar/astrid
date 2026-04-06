@@ -1,7 +1,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 /* Dark mode (default) */
-:root, [data-theme="dark"] {
+[data-theme="dark"] {
     --bg: #0f0f14;
     --surface: #1a1a24;
     --text: #eae8f0;

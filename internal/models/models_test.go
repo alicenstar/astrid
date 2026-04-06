@@ -13,7 +13,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-const defaultTestDSN = "postgres://astrid:astrid@localhost:5432/astrid?sslmode=disable"
+const defaultTestDSN = "postgres://astrid:astrid@localhost:5432/astrid_test?sslmode=disable"
 
 var testDB *sql.DB
 

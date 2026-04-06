@@ -1,0 +1,30 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astrid{{if .Title}} — {{.Title}}{{end}}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+</head>
+<body>
+    <nav class="top-nav">
+        <a href="/" class="nav-brand">Astrid</a>
+        <div class="nav-links">
+            <a href="/" class="{{if eq .ActiveNav "dashboard"}}active{{end}}">Dashboard</a>
+            <a href="/plans" class="{{if eq .ActiveNav "plans"}}active{{end}}">Plans</a>
+            <a href="/log" class="{{if eq .ActiveNav "log"}}active{{end}}">Log</a>
+            <a href="/summary" class="{{if eq .ActiveNav "summary"}}active{{end}}">Summary</a>
+            <a href="/workouts" class="{{if eq .ActiveNav "workouts"}}active{{end}}">Workouts</a>
+            <a href="/goals" class="{{if eq .ActiveNav "goals"}}active{{end}}">
+                Goals
+            </a>
+        </div>
+    </nav>
+    <main class="container">
+        {{template "content" .}}
+    </main>
+</body>
+</html>
+{{end}}

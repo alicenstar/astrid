@@ -58,6 +58,16 @@ This starts Postgres and Redis containers (creates them if needed, including the
 
 Requires Docker (or OrbStack) and `air` (`go install github.com/air-verse/air@latest`).
 
+### Logging in
+
+The app requires authentication. Three options:
+
+| Method | How | When to use |
+|--------|-----|-------------|
+| **Demo Login** | Click "Demo Login" on the login page. No credentials needed. | Quick access, demos, development |
+| **Sign up** | Go to `/signup`, enter any name, email, and password (8+ chars). Then log in at `/login`. | Testing multi-user, realistic flows |
+| **Google OAuth** | Click "Continue with Google" (only visible when `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` env vars are set). | Production, SSO |
+
 ### Environment variables
 
 | Variable | Default | Description |

@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS meals;
+DROP TABLE IF EXISTS daily_logs;

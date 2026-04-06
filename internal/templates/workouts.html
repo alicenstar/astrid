@@ -1,0 +1,83 @@
+{{define "content"}}
+<h1>Workout Splits</h1>
+
+<div class="card">
+    <h2>Create New Split</h2>
+    <form method="POST" action="/workouts">
+        <div class="form-group">
+            <label for="name">Split Name</label>
+            <input type="text" id="name" name="name" placeholder="e.g., Push/Pull/Legs" required>
+        </div>
+        <div class="form-group">
+            <label>Day Labels</label>
+            <div class="day-grid">
+                <div><label>Sun</label><input type="text" name="day_0" placeholder="e.g., Rest"></div>
+                <div><label>Mon</label><input type="text" name="day_1" placeholder="e.g., Push"></div>
+                <div><label>Tue</label><input type="text" name="day_2" placeholder="e.g., Pull"></div>
+                <div><label>Wed</label><input type="text" name="day_3" placeholder="e.g., Legs"></div>
+                <div><label>Thu</label><input type="text" name="day_4" placeholder="e.g., Push"></div>
+                <div><label>Fri</label><input type="text" name="day_5" placeholder="e.g., Pull"></div>
+                <div><label>Sat</label><input type="text" name="day_6" placeholder="e.g., Legs"></div>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary">Create Split</button>
+    </form>
+</div>
+
+{{range .Splits}}
+<div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h2>{{.Name}} {{if .IsActive}}<span class="streak-badge">Active</span>{{end}}</h2>
+        <div style="display:flex; gap:0.5rem;">
+            {{if not .IsActive}}
+            <form method="POST" action="/workouts/{{.ID}}/activate">
+                <button type="submit" class="btn btn-ghost">Set Active</button>
+            </form>
+            {{end}}
+            <form method="POST" action="/workouts/{{.ID}}/delete">
+                <button type="submit" class="btn btn-danger">Delete</button>
+            </form>
+        </div>
+    </div>
+
+    {{range .Days}}
+    <div style="margin-top:1rem; padding:0.75rem; background:var(--bg); border-radius:var(--radius);">
+        <strong>{{index $.DayNames .DayOfWeek}}: {{.Label}}</strong>
+
+        {{if .Exercises}}
+        <table style="margin-top:0.5rem;">
+            <tr><th>Exercise</th><th>Sets</th><th>Reps</th><th>Notes</th><th></th></tr>
+            {{range .Exercises}}
+            <tr>
+                <td>{{.Name}}</td>
+                <td>{{.Sets}}</td>
+                <td>{{.Reps}}</td>
+                <td>{{.Notes}}</td>
+                <td>
+                    <form method="POST" action="/workouts/exercises/{{.ID}}/delete">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {{end}}
+        </table>
+        {{end}}
+
+        <form method="POST" action="/workouts/days/{{.ID}}/exercises" style="display:flex; gap:0.5rem; margin-top:0.5rem; align-items:end;">
+            <input type="text" name="name" placeholder="Exercise name" required style="flex:2;">
+            <input type="number" name="sets" placeholder="Sets" min="0" style="flex:1;">
+            <input type="number" name="reps" placeholder="Reps" min="0" style="flex:1;">
+            <input type="text" name="notes" placeholder="Notes" style="flex:2;">
+            <button type="submit" class="btn btn-primary">Add</button>
+        </form>
+    </div>
+    {{end}}
+</div>
+{{end}}
+
+{{if not .Splits}}
+<div class="card">
+    <p style="text-align:center; color:var(--text-muted);">No workout splits yet. Create one above to get started.</p>
+</div>
+{{end}}
+{{end}}

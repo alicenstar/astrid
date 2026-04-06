@@ -73,6 +73,14 @@ func main() {
 	r.Post("/log/{date}/meals", mealsHandler.AddMeal)
 	r.Post("/log/{date}/meals/{mealID}/delete", mealsHandler.DeleteMeal)
 
+	workoutsHandler := handlers.NewWorkoutsHandler(db, user.ID, tmpl)
+	r.Get("/workouts", workoutsHandler.List)
+	r.Post("/workouts", workoutsHandler.Create)
+	r.Post("/workouts/{id}/activate", workoutsHandler.Activate)
+	r.Post("/workouts/{id}/delete", workoutsHandler.Delete)
+	r.Post("/workouts/days/{dayID}/exercises", workoutsHandler.AddExercise)
+	r.Post("/workouts/exercises/{exerciseID}/delete", workoutsHandler.DeleteExercise)
+
 	log.Printf("Astrid listening on %s", cfg.Addr())
 	if err := http.ListenAndServe(cfg.Addr(), r); err != nil {
 		log.Fatal(err)

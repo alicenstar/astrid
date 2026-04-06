@@ -93,6 +93,69 @@ func (h *PlansHandler) Activate(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/plans", http.StatusSeeOther)
 }
 
+func (h *PlansHandler) Edit(w http.ResponseWriter, r *http.Request) {
+	planID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid plan id", http.StatusBadRequest)
+		return
+	}
+	plan, err := models.GetCaloriePlan(h.db, planID, h.uid)
+	if err != nil || plan == nil {
+		h.tmpl.RenderError(w, "Plan not found", http.StatusNotFound)
+		return
+	}
+
+	dayTargets := make(map[int]int)
+	for _, d := range plan.Days {
+		dayTargets[d.DayOfWeek] = d.CalorieTarget
+	}
+
+	data := map[string]any{
+		"Title":      "Edit Plan",
+		"ActiveNav":  "plans",
+		"Plan":       plan,
+		"DayTargets": dayTargets,
+		"DayNames":   models.DayNames,
+	}
+	h.tmpl.Render(w, "plan_edit", data)
+}
+
+func (h *PlansHandler) Update(w http.ResponseWriter, r *http.Request) {
+	planID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid plan id", http.StatusBadRequest)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	name := r.FormValue("name")
+	if name == "" {
+		http.Error(w, "name is required", http.StatusBadRequest)
+		return
+	}
+
+	targets := make(map[int]int)
+	for day := 0; day < 7; day++ {
+		val := r.FormValue("day_" + strconv.Itoa(day))
+		if val != "" {
+			target, err := strconv.Atoi(val)
+			if err == nil && target > 0 {
+				targets[day] = target
+			}
+		}
+	}
+
+	if err := models.UpdateCaloriePlan(h.db, planID, h.uid, name, targets); err != nil {
+		h.tmpl.RenderError(w, "Could not update plan", http.StatusInternalServerError)
+		return
+	}
+	h.invalidateWeekCache()
+	http.Redirect(w, r, "/plans", http.StatusSeeOther)
+}
+
 func (h *PlansHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	planID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {

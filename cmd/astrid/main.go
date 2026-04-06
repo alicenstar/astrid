@@ -62,6 +62,8 @@ func main() {
 	plansHandler := handlers.NewPlansHandler(db, rdb, user.ID, tmpl)
 	r.Get("/plans", plansHandler.List)
 	r.Post("/plans", plansHandler.Create)
+	r.Get("/plans/{id}/edit", plansHandler.Edit)
+	r.Post("/plans/{id}/edit", plansHandler.Update)
 	r.Post("/plans/{id}/activate", plansHandler.Activate)
 	r.Post("/plans/{id}/delete", plansHandler.Delete)
 
@@ -76,6 +78,8 @@ func main() {
 	workoutsHandler := handlers.NewWorkoutsHandler(db, user.ID, tmpl)
 	r.Get("/workouts", workoutsHandler.List)
 	r.Post("/workouts", workoutsHandler.Create)
+	r.Get("/workouts/{id}/edit", workoutsHandler.Edit)
+	r.Post("/workouts/{id}/edit", workoutsHandler.Update)
 	r.Post("/workouts/{id}/activate", workoutsHandler.Activate)
 	r.Post("/workouts/{id}/delete", workoutsHandler.Delete)
 	r.Post("/workouts/days/{dayID}/exercises", workoutsHandler.AddExercise)

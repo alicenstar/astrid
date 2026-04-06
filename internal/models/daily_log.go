@@ -123,6 +123,9 @@ func CacheDailySummary(rdb *redis.Client, userID uuid.UUID, date time.Time, s *D
 }
 
 func InvalidateDailyCache(rdb *redis.Client, userID uuid.UUID, date time.Time) {
+	if rdb == nil {
+		return
+	}
 	ctx := context.Background()
 	dateStr := date.Format("2006-01-02")
 	prefix := fmt.Sprintf("daily:%s:%s", userID, dateStr)

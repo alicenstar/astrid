@@ -29,6 +29,7 @@
     <div style="display:flex; justify-content:space-between; align-items:center;">
         <h2>{{.Name}} {{if .IsActive}}<span class="streak-badge">Active</span>{{end}}</h2>
         <div style="display:flex; gap:0.5rem;">
+            <a href="/workouts/{{.ID}}/edit" class="btn btn-ghost">Edit</a>
             {{if not .IsActive}}
             <form method="POST" action="/workouts/{{.ID}}/activate">
                 <button type="submit" class="btn btn-ghost">Set Active</button>

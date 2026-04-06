@@ -64,6 +64,65 @@ func (h *WorkoutsHandler) Create(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/workouts", http.StatusSeeOther)
 }
 
+func (h *WorkoutsHandler) Edit(w http.ResponseWriter, r *http.Request) {
+	splitID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid split id", http.StatusBadRequest)
+		return
+	}
+	split, err := models.GetWorkoutSplit(h.db, splitID, h.uid)
+	if err != nil || split == nil {
+		h.tmpl.RenderError(w, "Split not found", http.StatusNotFound)
+		return
+	}
+
+	dayLabels := make(map[int]string)
+	for _, d := range split.Days {
+		dayLabels[d.DayOfWeek] = d.Label
+	}
+
+	data := map[string]any{
+		"Title":     "Edit Split",
+		"ActiveNav": "workouts",
+		"Split":     split,
+		"DayLabels": dayLabels,
+		"DayNames":  models.DayNames,
+	}
+	h.tmpl.Render(w, "workout_edit", data)
+}
+
+func (h *WorkoutsHandler) Update(w http.ResponseWriter, r *http.Request) {
+	splitID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, "invalid split id", http.StatusBadRequest)
+		return
+	}
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	name := r.FormValue("name")
+	if name == "" {
+		http.Error(w, "name is required", http.StatusBadRequest)
+		return
+	}
+
+	days := make(map[int]string)
+	for day := 0; day < 7; day++ {
+		label := r.FormValue("day_" + strconv.Itoa(day))
+		if label != "" {
+			days[day] = label
+		}
+	}
+
+	if err := models.UpdateWorkoutSplit(h.db, splitID, h.uid, name, days); err != nil {
+		h.tmpl.RenderError(w, "Could not update split", http.StatusInternalServerError)
+		return
+	}
+	http.Redirect(w, r, "/workouts", http.StatusSeeOther)
+}
+
 func (h *WorkoutsHandler) Activate(w http.ResponseWriter, r *http.Request) {
 	splitID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {

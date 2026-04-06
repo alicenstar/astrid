@@ -152,10 +152,14 @@ func CreateWorkoutSplit(db *sql.DB, userID uuid.UUID, name string, days map[int]
 	}
 	defer tx.Rollback()
 
+	// Auto-activate if no active split exists
+	var hasActive bool
+	tx.QueryRow(`SELECT EXISTS(SELECT 1 FROM workout_splits WHERE user_id = $1 AND is_active = true)`, userID).Scan(&hasActive)
+
 	var s WorkoutSplit
 	err = tx.QueryRow(
-		`INSERT INTO workout_splits (user_id, name) VALUES ($1, $2) RETURNING id, user_id, name, is_active, created_at`,
-		userID, name,
+		`INSERT INTO workout_splits (user_id, name, is_active) VALUES ($1, $2, $3) RETURNING id, user_id, name, is_active, created_at`,
+		userID, name, !hasActive,
 	).Scan(&s.ID, &s.UserID, &s.Name, &s.IsActive, &s.CreatedAt)
 	if err != nil {
 		return nil, err
@@ -194,6 +198,59 @@ func SetActiveSplit(db *sql.DB, userID, splitID uuid.UUID) error {
 	if err != nil {
 		return err
 	}
+	return tx.Commit()
+}
+
+func GetWorkoutSplit(db *sql.DB, splitID, userID uuid.UUID) (*WorkoutSplit, error) {
+	var s WorkoutSplit
+	err := db.QueryRow(
+		`SELECT id, user_id, name, is_active, created_at FROM workout_splits WHERE id = $1 AND user_id = $2`,
+		splitID, userID,
+	).Scan(&s.ID, &s.UserID, &s.Name, &s.IsActive, &s.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	s.Days, err = listSplitDays(db, s.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &s, nil
+}
+
+func UpdateWorkoutSplit(db *sql.DB, splitID, userID uuid.UUID, name string, days map[int]string) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`UPDATE workout_splits SET name = $1 WHERE id = $2 AND user_id = $3`, name, splitID, userID)
+	if err != nil {
+		return err
+	}
+
+	// Delete existing days (cascades to exercises) and re-insert
+	_, err = tx.Exec(`DELETE FROM split_days WHERE workout_split_id = $1`, splitID)
+	if err != nil {
+		return err
+	}
+
+	for day, label := range days {
+		if label == "" {
+			continue
+		}
+		_, err = tx.Exec(
+			`INSERT INTO split_days (workout_split_id, day_of_week, label, sort_order) VALUES ($1, $2, $3, $4)`,
+			splitID, day, label, day,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
 	return tx.Commit()
 }
 

@@ -102,12 +102,25 @@ func buildRouter(db *sql.DB, tmpl *handlers.Templates) http.Handler {
 
 	plansHandler := handlers.NewPlansHandler(db, nil, user.ID, tmpl)
 	r.Get("/plans", plansHandler.List)
+	r.Post("/plans", plansHandler.Create)
+	r.Get("/plans/{id}/edit", plansHandler.Edit)
+	r.Post("/plans/{id}/edit", plansHandler.Update)
+	r.Post("/plans/{id}/activate", plansHandler.Activate)
+	r.Post("/plans/{id}/delete", plansHandler.Delete)
 
 	mealsHandler := handlers.NewMealsHandler(db, nil, user.ID, tmpl)
 	r.Get("/log", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/log/"+time.Now().Format("2006-01-02"), http.StatusSeeOther)
 	})
 	r.Get("/log/{date}", mealsHandler.DailyLog)
+
+	workoutsHandler := handlers.NewWorkoutsHandler(db, user.ID, tmpl)
+	r.Get("/workouts", workoutsHandler.List)
+	r.Post("/workouts", workoutsHandler.Create)
+	r.Get("/workouts/{id}/edit", workoutsHandler.Edit)
+	r.Post("/workouts/{id}/edit", workoutsHandler.Update)
+	r.Post("/workouts/{id}/activate", workoutsHandler.Activate)
+	r.Post("/workouts/{id}/delete", workoutsHandler.Delete)
 
 	dashboardHandler := handlers.NewDashboardHandler(db, nil, user.ID, tmpl)
 	r.Get("/", dashboardHandler.Show)
@@ -272,6 +285,69 @@ func TestLogShowsCalorieProgress(t *testing.T) {
 	body := w.Body.String()
 	if strings.Contains(body, "No active calorie plan") {
 		t.Fatal("log page shows 'No active calorie plan' but an active plan exists")
+	}
+}
+
+func TestEditPlanPage(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+
+	user, _ := models.EnsureDefaultUser(handlerDB)
+	targets := map[int]int{1: 2000, 2: 2200}
+	plan, err := models.CreateCaloriePlan(handlerDB, user.ID, "My Plan", targets)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r := buildRouter(handlerDB, handlerTmpl)
+	req := httptest.NewRequest(http.MethodGet, "/plans/"+plan.ID.String()+"/edit", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d; body: %s", w.Code, w.Body.String())
+	}
+
+	body := w.Body.String()
+	if !strings.Contains(body, "My Plan") {
+		t.Fatal("edit page should show current plan name")
+	}
+	if !strings.Contains(body, "2000") {
+		t.Fatal("edit page should show current day targets")
+	}
+}
+
+func TestUpdatePlanViaPost(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+
+	user, _ := models.EnsureDefaultUser(handlerDB)
+	targets := map[int]int{1: 2000}
+	plan, _ := models.CreateCaloriePlan(handlerDB, user.ID, "Old Name", targets)
+
+	r := buildRouter(handlerDB, handlerTmpl)
+	form := strings.NewReader("name=New+Name&day_1=2500&day_3=1800")
+	req := httptest.NewRequest(http.MethodPost, "/plans/"+plan.ID.String()+"/edit", form)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("expected 303 redirect, got %d; body: %s", w.Code, w.Body.String())
+	}
+
+	// Verify the update persisted
+	updated, _ := models.GetCaloriePlan(handlerDB, plan.ID, user.ID)
+	if updated.Name != "New Name" {
+		t.Fatalf("expected 'New Name', got %q", updated.Name)
+	}
+	dayMap := make(map[int]int)
+	for _, d := range updated.Days {
+		dayMap[d.DayOfWeek] = d.CalorieTarget
+	}
+	if dayMap[1] != 2500 {
+		t.Fatalf("expected Mon=2500, got %d", dayMap[1])
+	}
+	if dayMap[3] != 1800 {
+		t.Fatalf("expected Wed=1800, got %d", dayMap[3])
 	}
 }
 

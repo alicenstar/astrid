@@ -169,6 +169,59 @@ func SetActivePlan(db *sql.DB, userID, planID uuid.UUID) error {
 	return tx.Commit()
 }
 
+func GetCaloriePlan(db *sql.DB, planID, userID uuid.UUID) (*CaloriePlan, error) {
+	var p CaloriePlan
+	err := db.QueryRow(
+		`SELECT id, user_id, name, is_active, created_at FROM calorie_plans WHERE id = $1 AND user_id = $2`,
+		planID, userID,
+	).Scan(&p.ID, &p.UserID, &p.Name, &p.IsActive, &p.CreatedAt)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	p.Days, err = listPlanDays(db, p.ID)
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
+func UpdateCaloriePlan(db *sql.DB, planID, userID uuid.UUID, name string, targets map[int]int) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	_, err = tx.Exec(`UPDATE calorie_plans SET name = $1 WHERE id = $2 AND user_id = $3`, name, planID, userID)
+	if err != nil {
+		return err
+	}
+
+	// Delete existing days and re-insert
+	_, err = tx.Exec(`DELETE FROM calorie_plan_days WHERE plan_id = $1`, planID)
+	if err != nil {
+		return err
+	}
+
+	for day, target := range targets {
+		if target <= 0 {
+			continue
+		}
+		_, err = tx.Exec(
+			`INSERT INTO calorie_plan_days (plan_id, day_of_week, calorie_target) VALUES ($1, $2, $3)`,
+			planID, day, target,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
 func DeleteCaloriePlan(db *sql.DB, planID, userID uuid.UUID) error {
 	_, err := db.Exec(`DELETE FROM calorie_plans WHERE id = $1 AND user_id = $2`, planID, userID)
 	return err

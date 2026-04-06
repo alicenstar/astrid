@@ -1,0 +1,28 @@
+{{define "content"}}
+<h1>Edit Split</h1>
+
+<div class="card">
+    <form method="POST" action="/workouts/{{.Split.ID}}/edit">
+        <div class="form-group">
+            <label for="name">Split Name</label>
+            <input type="text" id="name" name="name" value="{{.Split.Name}}" required>
+        </div>
+        <div class="form-group">
+            <label>Day Labels</label>
+            <div class="day-grid">
+                <div><label>Sun</label><input type="text" name="day_0" value="{{index .DayLabels 0}}"></div>
+                <div><label>Mon</label><input type="text" name="day_1" value="{{index .DayLabels 1}}"></div>
+                <div><label>Tue</label><input type="text" name="day_2" value="{{index .DayLabels 2}}"></div>
+                <div><label>Wed</label><input type="text" name="day_3" value="{{index .DayLabels 3}}"></div>
+                <div><label>Thu</label><input type="text" name="day_4" value="{{index .DayLabels 4}}"></div>
+                <div><label>Fri</label><input type="text" name="day_5" value="{{index .DayLabels 5}}"></div>
+                <div><label>Sat</label><input type="text" name="day_6" value="{{index .DayLabels 6}}"></div>
+            </div>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <a href="/workouts" class="btn btn-ghost">Cancel</a>
+        </div>
+    </form>
+</div>
+{{end}}

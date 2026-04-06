@@ -1,0 +1,28 @@
+{{define "content"}}
+<h1>Edit Plan</h1>
+
+<div class="card">
+    <form method="POST" action="/plans/{{.Plan.ID}}/edit">
+        <div class="form-group">
+            <label for="name">Plan Name</label>
+            <input type="text" id="name" name="name" value="{{.Plan.Name}}" required>
+        </div>
+        <div class="form-group">
+            <label>Daily Calorie Targets</label>
+            <div class="day-grid">
+                <div><label>Sun</label><input type="number" name="day_0" placeholder="kcal" min="0" value="{{index .DayTargets 0}}"></div>
+                <div><label>Mon</label><input type="number" name="day_1" placeholder="kcal" min="0" value="{{index .DayTargets 1}}"></div>
+                <div><label>Tue</label><input type="number" name="day_2" placeholder="kcal" min="0" value="{{index .DayTargets 2}}"></div>
+                <div><label>Wed</label><input type="number" name="day_3" placeholder="kcal" min="0" value="{{index .DayTargets 3}}"></div>
+                <div><label>Thu</label><input type="number" name="day_4" placeholder="kcal" min="0" value="{{index .DayTargets 4}}"></div>
+                <div><label>Fri</label><input type="number" name="day_5" placeholder="kcal" min="0" value="{{index .DayTargets 5}}"></div>
+                <div><label>Sat</label><input type="number" name="day_6" placeholder="kcal" min="0" value="{{index .DayTargets 6}}"></div>
+            </div>
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+            <a href="/plans" class="btn btn-ghost">Cancel</a>
+        </div>
+    </form>
+</div>
+{{end}}

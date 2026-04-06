@@ -440,3 +440,156 @@ func TestGetWorkoutStreak(t *testing.T) {
 		t.Fatalf("expected streak 3, got %d", streak)
 	}
 }
+
+func TestUpdateCaloriePlan(t *testing.T) {
+	cleanDB(t, testDB)
+	user, _ := EnsureDefaultUser(testDB)
+
+	// Create a plan with targets for Mon and Tue
+	targets := map[int]int{1: 2000, 2: 2200}
+	plan, err := CreateCaloriePlan(testDB, user.ID, "Original", targets)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Update: rename and change targets (add Wed, change Mon, remove Tue)
+	newTargets := map[int]int{1: 1800, 3: 2500}
+	err = UpdateCaloriePlan(testDB, plan.ID, user.ID, "Updated Name", newTargets)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify name changed
+	plans, _ := ListCaloriePlans(testDB, user.ID)
+	if len(plans) != 1 {
+		t.Fatalf("expected 1 plan, got %d", len(plans))
+	}
+	if plans[0].Name != "Updated Name" {
+		t.Fatalf("expected name 'Updated Name', got %q", plans[0].Name)
+	}
+
+	// Verify days: should have Mon=1800 and Wed=2500 (Tue removed)
+	days := plans[0].Days
+	if len(days) != 2 {
+		t.Fatalf("expected 2 days, got %d", len(days))
+	}
+
+	dayMap := make(map[int]int)
+	for _, d := range days {
+		dayMap[d.DayOfWeek] = d.CalorieTarget
+	}
+	if dayMap[1] != 1800 {
+		t.Fatalf("expected Mon=1800, got %d", dayMap[1])
+	}
+	if dayMap[3] != 2500 {
+		t.Fatalf("expected Wed=2500, got %d", dayMap[3])
+	}
+	if _, ok := dayMap[2]; ok {
+		t.Fatal("Tue should have been removed")
+	}
+}
+
+func TestGetCaloriePlan(t *testing.T) {
+	cleanDB(t, testDB)
+	user, _ := EnsureDefaultUser(testDB)
+
+	targets := map[int]int{0: 2000, 1: 2200}
+	created, _ := CreateCaloriePlan(testDB, user.ID, "My Plan", targets)
+
+	plan, err := GetCaloriePlan(testDB, created.ID, user.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan == nil {
+		t.Fatal("expected plan, got nil")
+	}
+	if plan.Name != "My Plan" {
+		t.Fatalf("expected 'My Plan', got %q", plan.Name)
+	}
+	if len(plan.Days) != 2 {
+		t.Fatalf("expected 2 days, got %d", len(plan.Days))
+	}
+}
+
+func TestCreateWorkoutSplit_AutoActivates(t *testing.T) {
+	cleanDB(t, testDB)
+	user, _ := EnsureDefaultUser(testDB)
+
+	days := map[int]string{1: "Push", 2: "Pull"}
+	split, err := CreateWorkoutSplit(testDB, user.ID, "PPL", days)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !split.IsActive {
+		t.Fatal("first workout split should be auto-activated")
+	}
+}
+
+func TestCreateWorkoutSplit_SecondNotAutoActivated(t *testing.T) {
+	cleanDB(t, testDB)
+	user, _ := EnsureDefaultUser(testDB)
+
+	days1 := map[int]string{1: "Push"}
+	CreateWorkoutSplit(testDB, user.ID, "Split 1", days1)
+
+	days2 := map[int]string{2: "Pull"}
+	split2, err := CreateWorkoutSplit(testDB, user.ID, "Split 2", days2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if split2.IsActive {
+		t.Fatal("second workout split should NOT be auto-activated")
+	}
+}
+
+func TestUpdateWorkoutSplit(t *testing.T) {
+	cleanDB(t, testDB)
+	user, _ := EnsureDefaultUser(testDB)
+
+	days := map[int]string{1: "Push", 2: "Pull"}
+	split, _ := CreateWorkoutSplit(testDB, user.ID, "Old PPL", days)
+
+	newDays := map[int]string{1: "Upper", 3: "Lower"}
+	err := UpdateWorkoutSplit(testDB, split.ID, user.ID, "New Split", newDays)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	splits, _ := ListWorkoutSplits(testDB, user.ID)
+	if splits[0].Name != "New Split" {
+		t.Fatalf("expected 'New Split', got %q", splits[0].Name)
+	}
+	if len(splits[0].Days) != 2 {
+		t.Fatalf("expected 2 days, got %d", len(splits[0].Days))
+	}
+
+	dayMap := make(map[int]string)
+	for _, d := range splits[0].Days {
+		dayMap[d.DayOfWeek] = d.Label
+	}
+	if dayMap[1] != "Upper" {
+		t.Fatalf("expected Mon='Upper', got %q", dayMap[1])
+	}
+	if dayMap[3] != "Lower" {
+		t.Fatalf("expected Wed='Lower', got %q", dayMap[3])
+	}
+}
+
+func TestGetWorkoutSplit(t *testing.T) {
+	cleanDB(t, testDB)
+	user, _ := EnsureDefaultUser(testDB)
+
+	days := map[int]string{1: "Push", 2: "Pull"}
+	created, _ := CreateWorkoutSplit(testDB, user.ID, "PPL", days)
+
+	split, err := GetWorkoutSplit(testDB, created.ID, user.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if split == nil {
+		t.Fatal("expected split, got nil")
+	}
+	if split.Name != "PPL" {
+		t.Fatalf("expected 'PPL', got %q", split.Name)
+	}
+}

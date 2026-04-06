@@ -593,3 +593,79 @@ func TestGetWorkoutSplit(t *testing.T) {
 		t.Fatalf("expected 'PPL', got %q", split.Name)
 	}
 }
+
+func TestCreateUserWithPassword(t *testing.T) {
+	cleanDB(t, testDB)
+
+	user, err := CreateUser(testDB, "Test User", "test@example.com", "password123")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if user.Email != "test@example.com" {
+		t.Fatalf("expected test@example.com, got %s", user.Email)
+	}
+	if user.AuthProvider != "local" {
+		t.Fatalf("expected local, got %s", user.AuthProvider)
+	}
+}
+
+func TestCreateUserDuplicateEmail(t *testing.T) {
+	cleanDB(t, testDB)
+
+	CreateUser(testDB, "User 1", "dupe@example.com", "password1")
+	_, err := CreateUser(testDB, "User 2", "dupe@example.com", "password2")
+	if err == nil {
+		t.Fatal("expected error for duplicate email")
+	}
+}
+
+func TestFindByEmailAndValidatePassword(t *testing.T) {
+	cleanDB(t, testDB)
+
+	CreateUser(testDB, "Test", "login@example.com", "correct-password")
+
+	user, err := FindByEmail(testDB, "login@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if user == nil {
+		t.Fatal("expected user")
+	}
+
+	if !user.ValidatePassword("correct-password") {
+		t.Fatal("expected valid password")
+	}
+	if user.ValidatePassword("wrong-password") {
+		t.Fatal("expected invalid password")
+	}
+}
+
+func TestFindByEmailNotFound(t *testing.T) {
+	cleanDB(t, testDB)
+
+	user, err := FindByEmail(testDB, "nobody@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if user != nil {
+		t.Fatal("expected nil for missing user")
+	}
+}
+
+func TestFindOrCreateGoogleUser(t *testing.T) {
+	cleanDB(t, testDB)
+
+	user1, err := FindOrCreateGoogleUser(testDB, "google-123", "guser@gmail.com", "Google User")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if user1.AuthProvider != "google" {
+		t.Fatalf("expected google, got %s", user1.AuthProvider)
+	}
+
+	// Calling again returns same user
+	user2, _ := FindOrCreateGoogleUser(testDB, "google-123", "guser@gmail.com", "Google User")
+	if user1.ID != user2.ID {
+		t.Fatal("expected same user ID on second call")
+	}
+}

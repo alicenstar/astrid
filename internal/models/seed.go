@@ -9,22 +9,20 @@ import (
 )
 
 // SeedDemoData populates the demo user's account with sample data.
-// Idempotent: skips if the user already has a calorie plan.
+// Idempotent: clears existing demo data and re-seeds fresh.
 func SeedDemoData(db *sql.DB, userID uuid.UUID) error {
-	var hasPlans bool
-	err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM calorie_plans WHERE user_id = $1)`, userID).Scan(&hasPlans)
-	if err != nil {
-		return fmt.Errorf("seed check: %w", err)
-	}
-	if hasPlans {
-		return nil
-	}
-
 	tx, err := db.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
+
+	// Clear existing data (cascades handle child records)
+	for _, table := range []string{"daily_logs", "workout_logs", "calorie_plans", "workout_splits"} {
+		if _, err := tx.Exec(fmt.Sprintf(`DELETE FROM %s WHERE user_id = $1`, table), userID); err != nil {
+			return fmt.Errorf("seed cleanup %s: %w", table, err)
+		}
+	}
 
 	// --- Calorie Plan: "Cut" with training/rest day split ---
 	var planID uuid.UUID

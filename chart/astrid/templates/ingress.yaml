@@ -5,13 +5,13 @@ metadata:
   name: {{ include "astrid.fullname" . }}
   labels:
     {{- include "astrid.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
+  {{- $annotations := .Values.ingress.annotations | default dict }}
+  {{- if eq .Values.tls.mode "auto" }}
+    {{- $_ := set $annotations (printf "cert-manager.io/%s" (.Values.tls.certManager.issuerKind | lower)) .Values.tls.certManager.issuerName }}
+  {{- end }}
+  {{- with $annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
-  {{- end }}
-  {{- if eq .Values.tls.mode "auto" }}
-  annotations:
-    cert-manager.io/{{ .Values.tls.certManager.issuerKind | lower }}: {{ .Values.tls.certManager.issuerName }}
   {{- end }}
 spec:
   {{- if .Values.ingress.className }}

@@ -1,0 +1,23 @@
+image:
+  repository: alicenstar/astrid
+  tag: "0.1.1"
+  pullPolicy: Always
+
+service:
+  type: NodePort
+
+ingress:
+  enabled: true
+  className: traefik
+  hosts:
+    - host: vibrant-dijkstra.ingress.replicatedcluster.com
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: app.astrid.fit
+      paths:
+        - path: /
+          pathType: Prefix
+
+tls:
+  mode: selfsigned

@@ -136,6 +136,7 @@ The chart supports three TLS modes via `tls.mode`:
 |------|-------------|
 | `auto` | Uses cert-manager to automatically provision a certificate. Set `tls.certManager.issuerName` and `tls.certManager.issuerKind`. |
 | `manual` | You provide a Kubernetes TLS secret. Set `tls.secretName` to the name of your secret containing `tls.crt` and `tls.key`. |
+| `selfsigned` | Creates a cert-manager SelfSigned Issuer and Certificate. Useful for dev/staging. Requires cert-manager in the cluster. |
 | `""` (empty) | No TLS at the ingress level (default). |
 
 To enable HTTPS with cert-manager (auto):

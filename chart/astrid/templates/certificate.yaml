@@ -1,0 +1,19 @@
+{{- if and .Values.ingress.enabled (eq .Values.tls.mode "selfsigned") -}}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "astrid.fullname" . }}-selfsigned-cert
+  labels:
+    {{- include "astrid.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "astrid.fullname" . }}-tls
+  issuerRef:
+    name: {{ include "astrid.fullname" . }}-selfsigned
+    kind: Issuer
+  dnsNames:
+    {{- range .Values.ingress.hosts }}
+    - {{ .host }}
+    {{- end }}
+  duration: 8760h # 1 year
+  renewBefore: 720h # 30 days
+{{- end }}

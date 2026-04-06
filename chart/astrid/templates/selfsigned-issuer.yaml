@@ -1,0 +1,10 @@
+{{- if and .Values.ingress.enabled (eq .Values.tls.mode "selfsigned") -}}
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ include "astrid.fullname" . }}-selfsigned
+  labels:
+    {{- include "astrid.labels" . | nindent 4 }}
+spec:
+  selfSigned: {}
+{{- end }}

@@ -17,7 +17,7 @@ spec:
   {{- if .Values.ingress.className }}
   ingressClassName: {{ .Values.ingress.className }}
   {{- end }}
-  {{- if or (eq .Values.tls.mode "auto") (eq .Values.tls.mode "manual") }}
+  {{- if or (eq .Values.tls.mode "auto") (eq .Values.tls.mode "manual") (eq .Values.tls.mode "selfsigned") }}
   tls:
     - hosts:
         {{- range .Values.ingress.hosts }}

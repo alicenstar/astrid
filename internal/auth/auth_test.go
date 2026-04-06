@@ -2,6 +2,8 @@ package auth_test
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
@@ -124,5 +126,78 @@ func TestSessionDelete(t *testing.T) {
 	session, _ := auth.GetSession(rdb, sessionID)
 	if session != nil {
 		t.Fatal("expected nil after delete")
+	}
+}
+
+func TestMiddlewareRedirectsWithoutSession(t *testing.T) {
+	rdb := getTestRedis(t)
+	defer rdb.Close()
+
+	mw := auth.NewAuthMiddleware(rdb)
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("expected 303 redirect, got %d", w.Code)
+	}
+	if w.Header().Get("Location") != "/login" {
+		t.Fatalf("expected redirect to /login, got %s", w.Header().Get("Location"))
+	}
+}
+
+func TestMiddlewareAllowsValidSession(t *testing.T) {
+	rdb := getTestRedis(t)
+	defer rdb.Close()
+
+	uid := uuid.New()
+	sessionID, _ := auth.CreateSession(rdb, uid, "test@example.com")
+	defer auth.DeleteSession(rdb, sessionID)
+
+	var gotUID uuid.UUID
+	var gotEmail string
+	mw := auth.NewAuthMiddleware(rdb)
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotUID, _ = auth.UserIDFromContext(r.Context())
+		gotEmail = auth.EmailFromContext(r.Context())
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: "astrid_session", Value: sessionID})
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	if gotUID != uid {
+		t.Fatalf("expected uid %s, got %s", uid, gotUID)
+	}
+	if gotEmail != "test@example.com" {
+		t.Fatalf("expected test@example.com, got %s", gotEmail)
+	}
+}
+
+func TestMiddlewareRedirectsWithInvalidSession(t *testing.T) {
+	rdb := getTestRedis(t)
+	defer rdb.Close()
+
+	mw := auth.NewAuthMiddleware(rdb)
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.AddCookie(&http.Cookie{Name: "astrid_session", Value: "invalid-session-id"})
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusSeeOther {
+		t.Fatalf("expected 303, got %d", w.Code)
 	}
 }

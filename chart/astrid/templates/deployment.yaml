@@ -60,6 +60,14 @@ spec:
               value: {{ include "astrid.databaseURL" . | quote }}
             - name: REDIS_URL
               value: {{ include "astrid.redisURL" . | quote }}
+            {{- if .Values.auth.google.clientID }}
+            - name: GOOGLE_CLIENT_ID
+              value: {{ .Values.auth.google.clientID | quote }}
+            - name: GOOGLE_CLIENT_SECRET
+              value: {{ .Values.auth.google.clientSecret | quote }}
+            - name: GOOGLE_REDIRECT_URL
+              value: {{ .Values.auth.google.redirectURL | quote }}
+            {{- end }}
           livenessProbe:
             httpGet:
               path: /healthz

@@ -1,3 +1,7 @@
+global:
+  security:
+    allowInsecureImages: true
+
 replicaCount: 1
 
 image:
@@ -33,6 +37,10 @@ resources:
 # --- Embedded PostgreSQL (Bitnami subchart) ---
 postgresql:
   enabled: true
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/postgresql
+    tag: 17.2.0-debian-12-r5
   auth:
     username: astrid
     password: astrid
@@ -57,6 +65,10 @@ externalDatabase:
 # --- Embedded Redis (Bitnami subchart) ---
 redis:
   enabled: true
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/redis
+    tag: 7.4.2-debian-12-r0
   architecture: standalone
   auth:
     enabled: false
@@ -82,3 +94,10 @@ tls:
   certManager:
     issuerName: letsencrypt-prod
     issuerKind: ClusterIssuer
+
+# --- Auth ---
+auth:
+  google:
+    clientID: ""
+    clientSecret: ""
+    redirectURL: ""

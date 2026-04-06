@@ -195,6 +195,39 @@ func TestDashboardShowsActivePlan(t *testing.T) {
 	}
 }
 
+func TestDashboardActivePlanNoTargetToday(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+
+	user, err := models.EnsureDefaultUser(handlerDB)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Create a plan with targets only for days that are NOT today
+	today := int(time.Now().Weekday())
+	otherDay := (today + 1) % 7
+	targets := map[int]int{otherDay: 2000}
+	_, err = models.CreateCaloriePlan(handlerDB, user.ID, "Partial Plan", targets)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r := buildRouter(handlerDB, handlerTmpl)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	body := w.Body.String()
+	// Should NOT say "No active calorie plan" — a plan IS active, just no target today
+	if strings.Contains(body, "No active calorie plan") {
+		t.Fatal("dashboard says 'No active calorie plan' but a plan IS active (just no target for today). Should show different message.")
+	}
+}
+
 func TestDashboardNoActivePlan(t *testing.T) {
 	cleanHandlerDB(t, handlerDB)
 

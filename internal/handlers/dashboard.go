@@ -33,6 +33,13 @@ func (h *DashboardHandler) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check if user has any active plan (separate from whether today has a target)
+	activePlan, err := models.GetActiveCaloriePlan(h.db, h.uid)
+	if err != nil {
+		h.tmpl.RenderError(w, "Could not load dashboard data", http.StatusInternalServerError)
+		return
+	}
+
 	// Today's workout
 	splitDay, err := models.GetTodaySplitDay(h.db, h.uid, dayOfWeek)
 	if err != nil {
@@ -55,15 +62,17 @@ func (h *DashboardHandler) Show(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := map[string]any{
-		"Title":        "Dashboard",
-		"ActiveNav":    "dashboard",
-		"Today":        today.Format("Monday, January 2"),
-		"TodayDateStr": today.Format("2006-01-02"),
-		"Summary":      summary,
-		"SplitDay":     splitDay,
-		"WorkoutLog":   workoutLog,
-		"WorkoutDone":  workoutLog != nil && workoutLog.Completed,
-		"Streak":       streak,
+		"Title":          "Dashboard",
+		"ActiveNav":      "dashboard",
+		"Today":          today.Format("Monday, January 2"),
+		"TodayDateStr":   today.Format("2006-01-02"),
+		"Summary":        summary,
+		"HasActivePlan":  activePlan != nil,
+		"HasTodayTarget": summary.CalorieTarget > 0,
+		"SplitDay":       splitDay,
+		"WorkoutLog":     workoutLog,
+		"WorkoutDone":    workoutLog != nil && workoutLog.Completed,
+		"Streak":         streak,
 	}
 	h.tmpl.Render(w, "dashboard", data)
 }

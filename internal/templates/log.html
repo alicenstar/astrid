@@ -7,12 +7,14 @@
 
 <div class="card">
     <h2>Calorie Progress</h2>
-    {{if .Summary.CalorieTarget}}
+    {{if .HasTodayTarget}}
     <div class="progress-bar">
         <div class="progress-bar-fill {{progressColor .Summary.TotalCalories .Summary.CalorieTarget}}"
              style="width: {{pct .Summary.TotalCalories .Summary.CalorieTarget}}%"></div>
         <span class="progress-text">{{.Summary.TotalCalories}} / {{.Summary.CalorieTarget}} kcal</span>
     </div>
+    {{else if .HasActivePlan}}
+    <p style="color:var(--text-muted);">No calorie goal set for this day. <a href="/plans">Edit your plan</a> to add one.</p>
     {{else}}
     <p style="color:var(--text-muted);">No active calorie plan. <a href="/plans">Create one</a> to see your progress.</p>
     {{end}}

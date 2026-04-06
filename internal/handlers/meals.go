@@ -50,19 +50,23 @@ func (h *MealsHandler) DailyLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	activePlan, _ := models.GetActiveCaloriePlan(h.db, h.uid)
+
 	prevDate := date.AddDate(0, 0, -1).Format("2006-01-02")
 	nextDate := date.AddDate(0, 0, 1).Format("2006-01-02")
 
 	data := map[string]any{
-		"Title":       "Daily Log",
-		"ActiveNav":   "log",
-		"Log":         log,
-		"Summary":     summary,
-		"Date":        date,
-		"DateStr":     date.Format("2006-01-02"),
-		"DateDisplay": date.Format("Monday, January 2"),
-		"PrevDate":    prevDate,
-		"NextDate":    nextDate,
+		"Title":          "Daily Log",
+		"ActiveNav":      "log",
+		"Log":            log,
+		"Summary":        summary,
+		"HasActivePlan":  activePlan != nil,
+		"HasTodayTarget": summary.CalorieTarget > 0,
+		"Date":           date,
+		"DateStr":        date.Format("2006-01-02"),
+		"DateDisplay":    date.Format("Monday, January 2"),
+		"PrevDate":       prevDate,
+		"NextDate":       nextDate,
 	}
 	h.tmpl.Render(w, "log", data)
 }

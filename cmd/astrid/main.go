@@ -81,6 +81,9 @@ func main() {
 	r.Post("/workouts/days/{dayID}/exercises", workoutsHandler.AddExercise)
 	r.Post("/workouts/exercises/{exerciseID}/delete", workoutsHandler.DeleteExercise)
 
+	workoutLogsHandler := handlers.NewWorkoutLogsHandler(db, user.ID)
+	r.Post("/workouts/toggle-today", workoutLogsHandler.Toggle)
+
 	log.Printf("Astrid listening on %s", cfg.Addr())
 	if err := http.ListenAndServe(cfg.Addr(), r); err != nil {
 		log.Fatal(err)

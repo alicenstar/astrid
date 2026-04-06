@@ -36,41 +36,27 @@ Single binary serves the web UI, static assets, and API. Migrations run automati
 - **PostgreSQL 16** -- running on `localhost:5432`
 - **Redis 7** -- running on `localhost:6379`
 
-The quickest way to get Postgres and Redis running locally is with Docker:
+A `Makefile` handles all the setup:
 
 ```bash
-# Start Postgres
-docker run -d --name astrid-pg \
-  -e POSTGRES_USER=astrid \
-  -e POSTGRES_PASSWORD=astrid \
-  -e POSTGRES_DB=astrid \
-  -p 5432:5432 \
-  postgres:16-alpine
-
-# Start Redis
-docker run -d --name astrid-redis \
-  -p 6379:6379 \
-  redis:7-alpine
-
-# Create test database (for running tests)
-docker exec astrid-pg psql -U astrid -d postgres -c "CREATE DATABASE astrid_test OWNER astrid;"
+make dev      # Start Postgres + Redis, run app with hot-reload
+make test     # Run all tests
+make stop     # Stop containers
+make clean    # Remove containers + built artifacts
+make build    # Build binary
+make docker   # Build Docker image
+make lint     # Helm lint
 ```
 
-### Run the app
+To get started:
 
 ```bash
-cd /path/to/astrid
-go run ./cmd/astrid/
+make dev
 ```
 
-The app starts on [http://localhost:8080](http://localhost:8080). Migrations run automatically. You'll see the login page -- use **Demo Login** for quick access.
+This starts Postgres and Redis containers (creates them if needed, including the test database), then launches the app with hot-reload via [air](https://github.com/air-verse/air). The app starts on [http://localhost:8080](http://localhost:8080) -- use **Demo Login** for quick access.
 
-For hot-reload during development:
-
-```bash
-go install github.com/air-verse/air@latest
-air
-```
+Requires Docker (or OrbStack) and `air` (`go install github.com/air-verse/air@latest`).
 
 ### Environment variables
 
@@ -88,16 +74,10 @@ When `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set, the Google login but
 ### Run tests
 
 ```bash
-# Run all tests (use -p 1 to avoid cross-package DB conflicts)
-go test ./... -p 1 -v
-
-# Run specific package
-go test ./internal/handlers/ -v
-go test ./internal/models/ -v
-go test ./internal/auth/ -v
+make test
 ```
 
-Tests use the `astrid_test` database to avoid interfering with development data.
+Tests use the `astrid_test` database (auto-created by `make start`) to avoid interfering with development data.
 
 ## Docker
 

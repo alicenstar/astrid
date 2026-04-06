@@ -59,6 +59,31 @@ func LoadTemplates(templatesDir string) (*Templates, error) {
 		},
 		"add": func(a, b int) int { return a + b },
 		"sub": func(a, b int) int { return a - b },
+		"pctDV": func(value float64, nutrient string) int {
+			// FDA recommended daily values
+			dvs := map[string]float64{
+				"protein":     50.0,
+				"fiber":       28.0,
+				"cholesterol": 300.0,
+			}
+			dv, ok := dvs[nutrient]
+			if !ok || dv == 0 {
+				return 0
+			}
+			return int(value * 100 / dv)
+		},
+		"pctDVInt": func(value int, nutrient string) int {
+			dvs := map[string]float64{
+				"protein":     50.0,
+				"fiber":       28.0,
+				"cholesterol": 300.0,
+			}
+			dv, ok := dvs[nutrient]
+			if !ok || dv == 0 {
+				return 0
+			}
+			return int(float64(value) * 100 / dv)
+		},
 		"pct": func(current, target int) int {
 			if target == 0 {
 				return 0

@@ -11,9 +11,9 @@
             <span class="progress-text" aria-hidden="true">{{.Summary.TotalCalories}} / {{.Summary.CalorieTarget}} kcal</span>
         </div>
         <div style="display:flex; gap:1.5rem; margin-top:0.75rem; font-size:0.85rem; color:var(--text-muted);">
-            <span>Protein: {{printf "%.1f" .Summary.TotalProtein}}g</span>
-            <span>Fiber: {{printf "%.1f" .Summary.TotalFiber}}g</span>
-            <span>Cholesterol: {{printf "%.1f" .Summary.TotalCholesterol}}mg</span>
+            <span>Protein: {{printf "%.1f" .Summary.TotalProtein}}g ({{pctDV .Summary.TotalProtein "protein"}}% DV)</span>
+            <span>Fiber: {{printf "%.1f" .Summary.TotalFiber}}g ({{pctDV .Summary.TotalFiber "fiber"}}% DV)</span>
+            <span>Cholesterol: {{printf "%.1f" .Summary.TotalCholesterol}}mg ({{pctDV .Summary.TotalCholesterol "cholesterol"}}% DV)</span>
         </div>
         {{else if .HasActivePlan}}
         <p style="color:var(--text-muted);">No calorie goal set for today. <a href="/plans">Edit your plan</a> to add one.</p>

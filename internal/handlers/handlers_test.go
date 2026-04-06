@@ -288,6 +288,55 @@ func TestLogShowsCalorieProgress(t *testing.T) {
 	}
 }
 
+func TestDashboardShowsDailyValuePercent(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+
+	user, _ := models.EnsureDefaultUser(handlerDB)
+	today := time.Now()
+	targets := map[int]int{int(today.Weekday()): 2000}
+	models.CreateCaloriePlan(handlerDB, user.ID, "Plan", targets)
+
+	// Log a meal with macros
+	dl, _ := models.GetOrCreateDailyLog(handlerDB, user.ID, today)
+	models.CreateMeal(handlerDB, dl.ID, "Lunch", 500, 25.0, 10.0, 150.0)
+
+	r := buildRouter(handlerDB, handlerTmpl)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	body := w.Body.String()
+	// Should show % DV for protein (25g = 50% of 50g DV)
+	if !strings.Contains(body, "% DV") {
+		t.Fatal("dashboard should show % daily value for macros")
+	}
+}
+
+func TestMealLogShowsDailyValuePercent(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+
+	user, _ := models.EnsureDefaultUser(handlerDB)
+	today := time.Now()
+	dl, _ := models.GetOrCreateDailyLog(handlerDB, user.ID, today)
+	models.CreateMeal(handlerDB, dl.ID, "Dinner", 700, 30.0, 14.0, 200.0)
+
+	r := buildRouter(handlerDB, handlerTmpl)
+	req := httptest.NewRequest(http.MethodGet, "/log/"+today.Format("2006-01-02"), nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	body := w.Body.String()
+	// Summary section should show % DV
+	if !strings.Contains(body, "% DV") {
+		t.Fatal("meal log should show % daily value for macro summaries")
+	}
+	// Individual meal rows should show % DV
+	if !strings.Contains(body, "60%") {
+		// 30g protein = 60% of 50g DV
+		t.Fatal("meal log should show per-meal % daily value")
+	}
+}
+
 func TestEditPlanPage(t *testing.T) {
 	cleanHandlerDB(t, handlerDB)
 

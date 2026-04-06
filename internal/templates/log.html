@@ -19,9 +19,9 @@
     <p style="color:var(--text-muted);">No active calorie plan. <a href="/plans">Create one</a> to see your progress.</p>
     {{end}}
     <div style="display:flex; gap:2rem; margin-top:0.75rem; font-size:0.85rem; color:var(--text-muted);">
-        <span>Protein: {{printf "%.1f" .Summary.TotalProtein}}g</span>
-        <span>Fiber: {{printf "%.1f" .Summary.TotalFiber}}g</span>
-        <span>Cholesterol: {{printf "%.1f" .Summary.TotalCholesterol}}mg</span>
+        <span>Protein: {{printf "%.1f" .Summary.TotalProtein}}g ({{pctDV .Summary.TotalProtein "protein"}}% DV)</span>
+        <span>Fiber: {{printf "%.1f" .Summary.TotalFiber}}g ({{pctDV .Summary.TotalFiber "fiber"}}% DV)</span>
+        <span>Cholesterol: {{printf "%.1f" .Summary.TotalCholesterol}}mg ({{pctDV .Summary.TotalCholesterol "cholesterol"}}% DV)</span>
     </div>
 </div>
 
@@ -74,9 +74,9 @@
             <tr>
                 <td>{{.Name}}</td>
                 <td>{{.Calories}} kcal</td>
-                <td>{{printf "%.1f" .ProteinG}}g</td>
-                <td>{{printf "%.1f" .FiberG}}g</td>
-                <td>{{printf "%.1f" .CholesterolMg}}mg</td>
+                <td>{{printf "%.1f" .ProteinG}}g ({{pctDV .ProteinG "protein"}}%)</td>
+                <td>{{printf "%.1f" .FiberG}}g ({{pctDV .FiberG "fiber"}}%)</td>
+                <td>{{printf "%.1f" .CholesterolMg}}mg ({{pctDV .CholesterolMg "cholesterol"}}%)</td>
                 <td>{{.LoggedAt.Format "3:04 PM"}}</td>
                 <td>
                     <form method="POST" action="/log/{{$.DateStr}}/meals/{{.ID}}/delete" onsubmit="return confirm('Delete this meal?')">

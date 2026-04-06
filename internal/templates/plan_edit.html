@@ -4,20 +4,22 @@
 <div class="card">
     <form method="POST" action="/plans/{{.Plan.ID}}/edit">
         <div class="form-group">
-            <label for="name">Plan Name</label>
-            <input type="text" id="name" name="name" value="{{.Plan.Name}}" required>
+            <label for="edit-plan-name">Plan Name</label>
+            <input type="text" id="edit-plan-name" name="name" value="{{.Plan.Name}}" required>
         </div>
         <div class="form-group">
-            <label>Daily Calorie Targets</label>
-            <div class="day-grid">
-                <div><label>Sun</label><input type="number" name="day_0" placeholder="kcal" min="0" value="{{index .DayTargets 0}}"></div>
-                <div><label>Mon</label><input type="number" name="day_1" placeholder="kcal" min="0" value="{{index .DayTargets 1}}"></div>
-                <div><label>Tue</label><input type="number" name="day_2" placeholder="kcal" min="0" value="{{index .DayTargets 2}}"></div>
-                <div><label>Wed</label><input type="number" name="day_3" placeholder="kcal" min="0" value="{{index .DayTargets 3}}"></div>
-                <div><label>Thu</label><input type="number" name="day_4" placeholder="kcal" min="0" value="{{index .DayTargets 4}}"></div>
-                <div><label>Fri</label><input type="number" name="day_5" placeholder="kcal" min="0" value="{{index .DayTargets 5}}"></div>
-                <div><label>Sat</label><input type="number" name="day_6" placeholder="kcal" min="0" value="{{index .DayTargets 6}}"></div>
-            </div>
+            <fieldset style="border:none; padding:0;">
+                <legend style="font-size:0.85rem; color:var(--text-muted); margin-bottom:0.25rem;">Daily Calorie Targets</legend>
+                <div class="day-grid">
+                    <div><label for="edit-day-0">Sun</label><input type="number" id="edit-day-0" name="day_0" placeholder="kcal" min="0" value="{{index .DayTargets 0}}"></div>
+                    <div><label for="edit-day-1">Mon</label><input type="number" id="edit-day-1" name="day_1" placeholder="kcal" min="0" value="{{index .DayTargets 1}}"></div>
+                    <div><label for="edit-day-2">Tue</label><input type="number" id="edit-day-2" name="day_2" placeholder="kcal" min="0" value="{{index .DayTargets 2}}"></div>
+                    <div><label for="edit-day-3">Wed</label><input type="number" id="edit-day-3" name="day_3" placeholder="kcal" min="0" value="{{index .DayTargets 3}}"></div>
+                    <div><label for="edit-day-4">Thu</label><input type="number" id="edit-day-4" name="day_4" placeholder="kcal" min="0" value="{{index .DayTargets 4}}"></div>
+                    <div><label for="edit-day-5">Fri</label><input type="number" id="edit-day-5" name="day_5" placeholder="kcal" min="0" value="{{index .DayTargets 5}}"></div>
+                    <div><label for="edit-day-6">Sat</label><input type="number" id="edit-day-6" name="day_6" placeholder="kcal" min="0" value="{{index .DayTargets 6}}"></div>
+                </div>
+            </fieldset>
         </div>
         <div style="display:flex; gap:0.5rem;">
             <button type="submit" class="btn btn-primary">Save Changes</button>

@@ -5,10 +5,10 @@
     <div class="card">
         <h2>Calorie Progress</h2>
         {{if .HasTodayTarget}}
-        <div class="progress-bar">
+        <div class="progress-bar" role="progressbar" aria-valuenow="{{.Summary.TotalCalories}}" aria-valuemin="0" aria-valuemax="{{.Summary.CalorieTarget}}" aria-label="Calorie progress: {{.Summary.TotalCalories}} of {{.Summary.CalorieTarget}} kcal">
             <div class="progress-bar-fill {{progressColor .Summary.TotalCalories .Summary.CalorieTarget}}"
                  style="width: {{pct .Summary.TotalCalories .Summary.CalorieTarget}}%"></div>
-            <span class="progress-text">{{.Summary.TotalCalories}} / {{.Summary.CalorieTarget}} kcal</span>
+            <span class="progress-text" aria-hidden="true">{{.Summary.TotalCalories}} / {{.Summary.CalorieTarget}} kcal</span>
         </div>
         <div style="display:flex; gap:1.5rem; margin-top:0.75rem; font-size:0.85rem; color:var(--text-muted);">
             <span>Protein: {{printf "%.1f" .Summary.TotalProtein}}g</span>
@@ -21,7 +21,7 @@
         <p style="color:var(--text-muted);">No active calorie plan. <a href="/plans">Create one</a>.</p>
         {{end}}
         <div style="margin-top:0.75rem;">
-            <a href="/log/{{.TodayDateStr}}" class="btn btn-ghost">Log Meals &rarr;</a>
+            <a href="/log/{{.TodayDateStr}}" class="btn btn-ghost">Log Meals</a>
         </div>
     </div>
 
@@ -29,21 +29,25 @@
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2>Today's Workout</h2>
             {{if gt .Streak 0}}
-            <span class="streak-badge">{{.Streak}} day streak</span>
+            <span class="streak-badge" aria-label="{{.Streak}} day workout streak">{{.Streak}} day streak</span>
             {{end}}
         </div>
         {{if .SplitDay}}
         <p style="font-weight:600; margin-bottom:0.5rem;">{{.SplitDay.Label}}</p>
         {{if .SplitDay.Exercises}}
         <table>
-            <tr><th>Exercise</th><th>Sets</th><th>Reps</th></tr>
-            {{range .SplitDay.Exercises}}
-            <tr>
-                <td>{{.Name}}</td>
-                <td>{{.Sets}}</td>
-                <td>{{.Reps}}</td>
-            </tr>
-            {{end}}
+            <thead>
+                <tr><th>Exercise</th><th>Sets</th><th>Reps</th></tr>
+            </thead>
+            <tbody>
+                {{range .SplitDay.Exercises}}
+                <tr>
+                    <td>{{.Name}}</td>
+                    <td>{{.Sets}}</td>
+                    <td>{{.Reps}}</td>
+                </tr>
+                {{end}}
+            </tbody>
         </table>
         {{end}}
         <form method="POST" action="/workouts/toggle-today" style="margin-top:0.75rem;">

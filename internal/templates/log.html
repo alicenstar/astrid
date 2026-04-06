@@ -1,17 +1,17 @@
 {{define "content"}}
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-    <a href="/log/{{.PrevDate}}" class="btn btn-ghost">&larr; Prev</a>
+    <a href="/log/{{.PrevDate}}" class="btn btn-ghost" aria-label="Previous day">&larr; Prev</a>
     <h1>{{.DateDisplay}}</h1>
-    <a href="/log/{{.NextDate}}" class="btn btn-ghost">Next &rarr;</a>
+    <a href="/log/{{.NextDate}}" class="btn btn-ghost" aria-label="Next day">Next &rarr;</a>
 </div>
 
 <div class="card">
     <h2>Calorie Progress</h2>
     {{if .HasTodayTarget}}
-    <div class="progress-bar">
+    <div class="progress-bar" role="progressbar" aria-valuenow="{{.Summary.TotalCalories}}" aria-valuemin="0" aria-valuemax="{{.Summary.CalorieTarget}}" aria-label="Calorie progress: {{.Summary.TotalCalories}} of {{.Summary.CalorieTarget}} kcal">
         <div class="progress-bar-fill {{progressColor .Summary.TotalCalories .Summary.CalorieTarget}}"
              style="width: {{pct .Summary.TotalCalories .Summary.CalorieTarget}}%"></div>
-        <span class="progress-text">{{.Summary.TotalCalories}} / {{.Summary.CalorieTarget}} kcal</span>
+        <span class="progress-text" aria-hidden="true">{{.Summary.TotalCalories}} / {{.Summary.CalorieTarget}} kcal</span>
     </div>
     {{else if .HasActivePlan}}
     <p style="color:var(--text-muted);">No calorie goal set for this day. <a href="/plans">Edit your plan</a> to add one.</p>
@@ -30,24 +30,24 @@
     <form method="POST" action="/log/{{.DateStr}}/meals">
         <div style="display:grid; grid-template-columns:2fr 1fr 1fr 1fr 1fr auto; gap:0.5rem; align-items:end;">
             <div class="form-group">
-                <label>Name</label>
-                <input type="text" name="name" placeholder="e.g., Lunch" required>
+                <label for="meal-name">Name</label>
+                <input type="text" id="meal-name" name="name" placeholder="e.g., Lunch" required>
             </div>
             <div class="form-group">
-                <label>Calories</label>
-                <input type="number" name="calories" placeholder="kcal" min="0" required>
+                <label for="meal-calories">Calories</label>
+                <input type="number" id="meal-calories" name="calories" placeholder="kcal" min="0" required>
             </div>
             <div class="form-group">
-                <label>Protein (g)</label>
-                <input type="number" name="protein" placeholder="0" min="0" step="0.1">
+                <label for="meal-protein">Protein (g)</label>
+                <input type="number" id="meal-protein" name="protein" placeholder="0" min="0" step="0.1">
             </div>
             <div class="form-group">
-                <label>Fiber (g)</label>
-                <input type="number" name="fiber" placeholder="0" min="0" step="0.1">
+                <label for="meal-fiber">Fiber (g)</label>
+                <input type="number" id="meal-fiber" name="fiber" placeholder="0" min="0" step="0.1">
             </div>
             <div class="form-group">
-                <label>Cholesterol (mg)</label>
-                <input type="number" name="cholesterol" placeholder="0" min="0" step="0.1">
+                <label for="meal-cholesterol">Cholesterol (mg)</label>
+                <input type="number" id="meal-cholesterol" name="cholesterol" placeholder="0" min="0" step="0.1">
             </div>
             <button type="submit" class="btn btn-primary" style="margin-bottom:0.75rem;">Add</button>
         </div>
@@ -58,30 +58,34 @@
     <h2>Meals</h2>
     {{if .Log.Meals}}
     <table>
-        <tr>
-            <th>Meal</th>
-            <th>Calories</th>
-            <th>Protein</th>
-            <th>Fiber</th>
-            <th>Cholesterol</th>
-            <th>Time</th>
-            <th></th>
-        </tr>
-        {{range .Log.Meals}}
-        <tr>
-            <td>{{.Name}}</td>
-            <td>{{.Calories}} kcal</td>
-            <td>{{printf "%.1f" .ProteinG}}g</td>
-            <td>{{printf "%.1f" .FiberG}}g</td>
-            <td>{{printf "%.1f" .CholesterolMg}}mg</td>
-            <td>{{.LoggedAt.Format "3:04 PM"}}</td>
-            <td>
-                <form method="POST" action="/log/{{$.DateStr}}/meals/{{.ID}}/delete">
-                    <button type="submit" class="btn btn-danger">Delete</button>
-                </form>
-            </td>
-        </tr>
-        {{end}}
+        <thead>
+            <tr>
+                <th>Meal</th>
+                <th>Calories</th>
+                <th>Protein</th>
+                <th>Fiber</th>
+                <th>Cholesterol</th>
+                <th>Time</th>
+                <th><span class="sr-only">Actions</span></th>
+            </tr>
+        </thead>
+        <tbody>
+            {{range .Log.Meals}}
+            <tr>
+                <td>{{.Name}}</td>
+                <td>{{.Calories}} kcal</td>
+                <td>{{printf "%.1f" .ProteinG}}g</td>
+                <td>{{printf "%.1f" .FiberG}}g</td>
+                <td>{{printf "%.1f" .CholesterolMg}}mg</td>
+                <td>{{.LoggedAt.Format "3:04 PM"}}</td>
+                <td>
+                    <form method="POST" action="/log/{{$.DateStr}}/meals/{{.ID}}/delete" onsubmit="return confirm('Delete this meal?')">
+                        <button type="submit" class="btn btn-danger" aria-label="Delete {{.Name}}">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {{end}}
+        </tbody>
     </table>
     {{else}}
     <p style="text-align:center; color:var(--text-muted);">No meals logged yet today.</p>

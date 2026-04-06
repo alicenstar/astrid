@@ -10,21 +10,22 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/alicenstar/astrid/internal/auth"
 	"github.com/alicenstar/astrid/internal/models"
 )
 
 type MealsHandler struct {
 	db   *sql.DB
 	rdb  *redis.Client
-	uid  uuid.UUID
 	tmpl *Templates
 }
 
-func NewMealsHandler(db *sql.DB, rdb *redis.Client, uid uuid.UUID, tmpl *Templates) *MealsHandler {
-	return &MealsHandler{db: db, rdb: rdb, uid: uid, tmpl: tmpl}
+func NewMealsHandler(db *sql.DB, rdb *redis.Client, tmpl *Templates) *MealsHandler {
+	return &MealsHandler{db: db, rdb: rdb, tmpl: tmpl}
 }
 
 func (h *MealsHandler) DailyLog(w http.ResponseWriter, r *http.Request) {
+	uid, _ := auth.UserIDFromContext(r.Context())
 	dateStr := chi.URLParam(r, "date")
 	var date time.Time
 	if dateStr == "" {
@@ -38,19 +39,19 @@ func (h *MealsHandler) DailyLog(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	log, err := models.GetOrCreateDailyLog(h.db, h.uid, date)
+	log, err := models.GetOrCreateDailyLog(h.db, uid, date)
 	if err != nil {
 		h.tmpl.RenderError(w, "Could not load daily log", http.StatusInternalServerError)
 		return
 	}
 
-	summary, err := models.GetDailySummary(h.db, h.rdb, h.uid, date, int(date.Weekday()))
+	summary, err := models.GetDailySummary(h.db, h.rdb, uid, date, int(date.Weekday()))
 	if err != nil {
 		h.tmpl.RenderError(w, "Could not load daily log", http.StatusInternalServerError)
 		return
 	}
 
-	activePlan, _ := models.GetActiveCaloriePlan(h.db, h.uid)
+	activePlan, _ := models.GetActiveCaloriePlan(h.db, uid)
 
 	prevDate := date.AddDate(0, 0, -1).Format("2006-01-02")
 	nextDate := date.AddDate(0, 0, 1).Format("2006-01-02")
@@ -72,6 +73,7 @@ func (h *MealsHandler) DailyLog(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MealsHandler) AddMeal(w http.ResponseWriter, r *http.Request) {
+	uid, _ := auth.UserIDFromContext(r.Context())
 	dateStr := chi.URLParam(r, "date")
 	date, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
@@ -84,7 +86,7 @@ func (h *MealsHandler) AddMeal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log, err := models.GetOrCreateDailyLog(h.db, h.uid, date)
+	log, err := models.GetOrCreateDailyLog(h.db, uid, date)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -102,11 +104,12 @@ func (h *MealsHandler) AddMeal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	models.InvalidateDailyCache(h.rdb, h.uid, date)
+	models.InvalidateDailyCache(h.rdb, uid, date)
 	http.Redirect(w, r, "/log/"+dateStr, http.StatusSeeOther)
 }
 
 func (h *MealsHandler) DeleteMeal(w http.ResponseWriter, r *http.Request) {
+	uid, _ := auth.UserIDFromContext(r.Context())
 	dateStr := chi.URLParam(r, "date")
 	date, err := time.Parse("2006-01-02", dateStr)
 	if err != nil {
@@ -125,6 +128,6 @@ func (h *MealsHandler) DeleteMeal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	models.InvalidateDailyCache(h.rdb, h.uid, date)
+	models.InvalidateDailyCache(h.rdb, uid, date)
 	http.Redirect(w, r, "/log/"+dateStr, http.StatusSeeOther)
 }

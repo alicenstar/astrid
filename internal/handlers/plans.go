@@ -10,30 +10,31 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/alicenstar/astrid/internal/auth"
 	"github.com/alicenstar/astrid/internal/models"
 )
 
 type PlansHandler struct {
 	db   *sql.DB
 	rdb  *redis.Client
-	uid  uuid.UUID
 	tmpl *Templates
 }
 
-func NewPlansHandler(db *sql.DB, rdb *redis.Client, uid uuid.UUID, tmpl *Templates) *PlansHandler {
-	return &PlansHandler{db: db, rdb: rdb, uid: uid, tmpl: tmpl}
+func NewPlansHandler(db *sql.DB, rdb *redis.Client, tmpl *Templates) *PlansHandler {
+	return &PlansHandler{db: db, rdb: rdb, tmpl: tmpl}
 }
 
-func (h *PlansHandler) invalidateWeekCache() {
+func (h *PlansHandler) invalidateWeekCache(uid uuid.UUID) {
 	today := time.Now()
 	for i := 0; i < 7; i++ {
 		date := today.AddDate(0, 0, -int(today.Weekday())+i)
-		models.InvalidateDailyCache(h.rdb, h.uid, date)
+		models.InvalidateDailyCache(h.rdb, uid, date)
 	}
 }
 
 func (h *PlansHandler) List(w http.ResponseWriter, r *http.Request) {
-	plans, err := models.ListCaloriePlans(h.db, h.uid)
+	uid, _ := auth.UserIDFromContext(r.Context())
+	plans, err := models.ListCaloriePlans(h.db, uid)
 	if err != nil {
 		h.tmpl.RenderError(w, "Could not load calorie plans", http.StatusInternalServerError)
 		return
@@ -48,6 +49,7 @@ func (h *PlansHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PlansHandler) Create(w http.ResponseWriter, r *http.Request) {
+	uid, _ := auth.UserIDFromContext(r.Context())
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -70,36 +72,38 @@ func (h *PlansHandler) Create(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_, err := models.CreateCaloriePlan(h.db, h.uid, name, targets)
+	_, err := models.CreateCaloriePlan(h.db, uid, name, targets)
 	if err != nil {
 		h.tmpl.RenderError(w, "Could not create calorie plan", http.StatusInternalServerError)
 		return
 	}
-	h.invalidateWeekCache()
+	h.invalidateWeekCache(uid)
 	http.Redirect(w, r, "/plans", http.StatusSeeOther)
 }
 
 func (h *PlansHandler) Activate(w http.ResponseWriter, r *http.Request) {
+	uid, _ := auth.UserIDFromContext(r.Context())
 	planID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		http.Error(w, "invalid plan id", http.StatusBadRequest)
 		return
 	}
-	if err := models.SetActivePlan(h.db, h.uid, planID); err != nil {
+	if err := models.SetActivePlan(h.db, uid, planID); err != nil {
 		h.tmpl.RenderError(w, "Could not activate plan", http.StatusInternalServerError)
 		return
 	}
-	h.invalidateWeekCache()
+	h.invalidateWeekCache(uid)
 	http.Redirect(w, r, "/plans", http.StatusSeeOther)
 }
 
 func (h *PlansHandler) Edit(w http.ResponseWriter, r *http.Request) {
+	uid, _ := auth.UserIDFromContext(r.Context())
 	planID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		http.Error(w, "invalid plan id", http.StatusBadRequest)
 		return
 	}
-	plan, err := models.GetCaloriePlan(h.db, planID, h.uid)
+	plan, err := models.GetCaloriePlan(h.db, planID, uid)
 	if err != nil || plan == nil {
 		h.tmpl.RenderError(w, "Plan not found", http.StatusNotFound)
 		return
@@ -121,6 +125,7 @@ func (h *PlansHandler) Edit(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *PlansHandler) Update(w http.ResponseWriter, r *http.Request) {
+	uid, _ := auth.UserIDFromContext(r.Context())
 	planID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		http.Error(w, "invalid plan id", http.StatusBadRequest)
@@ -148,24 +153,25 @@ func (h *PlansHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := models.UpdateCaloriePlan(h.db, planID, h.uid, name, targets); err != nil {
+	if err := models.UpdateCaloriePlan(h.db, planID, uid, name, targets); err != nil {
 		h.tmpl.RenderError(w, "Could not update plan", http.StatusInternalServerError)
 		return
 	}
-	h.invalidateWeekCache()
+	h.invalidateWeekCache(uid)
 	http.Redirect(w, r, "/plans", http.StatusSeeOther)
 }
 
 func (h *PlansHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	uid, _ := auth.UserIDFromContext(r.Context())
 	planID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		http.Error(w, "invalid plan id", http.StatusBadRequest)
 		return
 	}
-	if err := models.DeleteCaloriePlan(h.db, planID, h.uid); err != nil {
+	if err := models.DeleteCaloriePlan(h.db, planID, uid); err != nil {
 		h.tmpl.RenderError(w, "Could not delete plan", http.StatusInternalServerError)
 		return
 	}
-	h.invalidateWeekCache()
+	h.invalidateWeekCache(uid)
 	http.Redirect(w, r, "/plans", http.StatusSeeOther)
 }

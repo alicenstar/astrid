@@ -5,21 +5,20 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
+	"github.com/alicenstar/astrid/internal/auth"
 	"github.com/alicenstar/astrid/internal/models"
 )
 
 type SummaryHandler struct {
 	db   *sql.DB
 	rdb  *redis.Client
-	uid  uuid.UUID
 	tmpl *Templates
 }
 
-func NewSummaryHandler(db *sql.DB, rdb *redis.Client, uid uuid.UUID, tmpl *Templates) *SummaryHandler {
-	return &SummaryHandler{db: db, rdb: rdb, uid: uid, tmpl: tmpl}
+func NewSummaryHandler(db *sql.DB, rdb *redis.Client, tmpl *Templates) *SummaryHandler {
+	return &SummaryHandler{db: db, rdb: rdb, tmpl: tmpl}
 }
 
 type DaySummaryRow struct {
@@ -31,6 +30,7 @@ type DaySummaryRow struct {
 }
 
 func (h *SummaryHandler) Show(w http.ResponseWriter, r *http.Request) {
+	uid, _ := auth.UserIDFromContext(r.Context())
 	today := time.Now()
 	// Find the most recent Sunday
 	offset := int(today.Weekday())
@@ -44,7 +44,7 @@ func (h *SummaryHandler) Show(w http.ResponseWriter, r *http.Request) {
 		date := weekStart.AddDate(0, 0, i)
 		dayOfWeek := int(date.Weekday())
 
-		summary, err := models.GetDailySummary(h.db, h.rdb, h.uid, date, dayOfWeek)
+		summary, err := models.GetDailySummary(h.db, h.rdb, uid, date, dayOfWeek)
 		if err != nil {
 			h.tmpl.RenderError(w, "Could not load weekly summary", http.StatusInternalServerError)
 			return

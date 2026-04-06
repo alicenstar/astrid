@@ -8,21 +8,22 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 
+	"github.com/alicenstar/astrid/internal/auth"
 	"github.com/alicenstar/astrid/internal/models"
 )
 
 type WorkoutsHandler struct {
 	db   *sql.DB
-	uid  uuid.UUID
 	tmpl *Templates
 }
 
-func NewWorkoutsHandler(db *sql.DB, uid uuid.UUID, tmpl *Templates) *WorkoutsHandler {
-	return &WorkoutsHandler{db: db, uid: uid, tmpl: tmpl}
+func NewWorkoutsHandler(db *sql.DB, tmpl *Templates) *WorkoutsHandler {
+	return &WorkoutsHandler{db: db, tmpl: tmpl}
 }
 
 func (h *WorkoutsHandler) List(w http.ResponseWriter, r *http.Request) {
-	splits, err := models.ListWorkoutSplits(h.db, h.uid)
+	uid, _ := auth.UserIDFromContext(r.Context())
+	splits, err := models.ListWorkoutSplits(h.db, uid)
 	if err != nil {
 		h.tmpl.RenderError(w, "Could not load workout splits", http.StatusInternalServerError)
 		return
@@ -37,6 +38,7 @@ func (h *WorkoutsHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WorkoutsHandler) Create(w http.ResponseWriter, r *http.Request) {
+	uid, _ := auth.UserIDFromContext(r.Context())
 	if err := r.ParseForm(); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -56,7 +58,7 @@ func (h *WorkoutsHandler) Create(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	_, err := models.CreateWorkoutSplit(h.db, h.uid, name, days)
+	_, err := models.CreateWorkoutSplit(h.db, uid, name, days)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -65,12 +67,13 @@ func (h *WorkoutsHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WorkoutsHandler) Edit(w http.ResponseWriter, r *http.Request) {
+	uid, _ := auth.UserIDFromContext(r.Context())
 	splitID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		http.Error(w, "invalid split id", http.StatusBadRequest)
 		return
 	}
-	split, err := models.GetWorkoutSplit(h.db, splitID, h.uid)
+	split, err := models.GetWorkoutSplit(h.db, splitID, uid)
 	if err != nil || split == nil {
 		h.tmpl.RenderError(w, "Split not found", http.StatusNotFound)
 		return
@@ -92,6 +95,7 @@ func (h *WorkoutsHandler) Edit(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WorkoutsHandler) Update(w http.ResponseWriter, r *http.Request) {
+	uid, _ := auth.UserIDFromContext(r.Context())
 	splitID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		http.Error(w, "invalid split id", http.StatusBadRequest)
@@ -116,7 +120,7 @@ func (h *WorkoutsHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err := models.UpdateWorkoutSplit(h.db, splitID, h.uid, name, days); err != nil {
+	if err := models.UpdateWorkoutSplit(h.db, splitID, uid, name, days); err != nil {
 		h.tmpl.RenderError(w, "Could not update split", http.StatusInternalServerError)
 		return
 	}
@@ -124,12 +128,13 @@ func (h *WorkoutsHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WorkoutsHandler) Activate(w http.ResponseWriter, r *http.Request) {
+	uid, _ := auth.UserIDFromContext(r.Context())
 	splitID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		http.Error(w, "invalid split id", http.StatusBadRequest)
 		return
 	}
-	if err := models.SetActiveSplit(h.db, h.uid, splitID); err != nil {
+	if err := models.SetActiveSplit(h.db, uid, splitID); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -137,12 +142,13 @@ func (h *WorkoutsHandler) Activate(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WorkoutsHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	uid, _ := auth.UserIDFromContext(r.Context())
 	splitID, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		http.Error(w, "invalid split id", http.StatusBadRequest)
 		return
 	}
-	if err := models.DeleteWorkoutSplit(h.db, splitID, h.uid); err != nil {
+	if err := models.DeleteWorkoutSplit(h.db, splitID, uid); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

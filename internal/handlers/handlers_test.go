@@ -14,8 +14,10 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	migratepostgres "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 
+	"github.com/alicenstar/astrid/internal/auth"
 	"github.com/alicenstar/astrid/internal/handlers"
 	"github.com/alicenstar/astrid/internal/models"
 )
@@ -86,6 +88,13 @@ func cleanHandlerDB(t *testing.T, db *sql.DB) {
 	}
 }
 
+func injectUserID(uid uuid.UUID, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := auth.ContextWithUserID(r.Context(), uid)
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
 func buildRouter(db *sql.DB, tmpl *handlers.Templates) http.Handler {
 	user, err := models.EnsureDefaultUser(db)
 	if err != nil {
@@ -93,6 +102,9 @@ func buildRouter(db *sql.DB, tmpl *handlers.Templates) http.Handler {
 	}
 
 	r := chi.NewRouter()
+	r.Use(func(next http.Handler) http.Handler {
+		return injectUserID(user.ID, next)
+	})
 
 	healthHandler := handlers.NewHealthHandler(
 		handlers.NewPgPinger(db),
@@ -100,7 +112,7 @@ func buildRouter(db *sql.DB, tmpl *handlers.Templates) http.Handler {
 	)
 	r.Get("/healthz", healthHandler.ServeHTTP)
 
-	plansHandler := handlers.NewPlansHandler(db, nil, user.ID, tmpl)
+	plansHandler := handlers.NewPlansHandler(db, nil, tmpl)
 	r.Get("/plans", plansHandler.List)
 	r.Post("/plans", plansHandler.Create)
 	r.Get("/plans/{id}/edit", plansHandler.Edit)
@@ -108,13 +120,13 @@ func buildRouter(db *sql.DB, tmpl *handlers.Templates) http.Handler {
 	r.Post("/plans/{id}/activate", plansHandler.Activate)
 	r.Post("/plans/{id}/delete", plansHandler.Delete)
 
-	mealsHandler := handlers.NewMealsHandler(db, nil, user.ID, tmpl)
+	mealsHandler := handlers.NewMealsHandler(db, nil, tmpl)
 	r.Get("/log", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/log/"+time.Now().Format("2006-01-02"), http.StatusSeeOther)
 	})
 	r.Get("/log/{date}", mealsHandler.DailyLog)
 
-	workoutsHandler := handlers.NewWorkoutsHandler(db, user.ID, tmpl)
+	workoutsHandler := handlers.NewWorkoutsHandler(db, tmpl)
 	r.Get("/workouts", workoutsHandler.List)
 	r.Post("/workouts", workoutsHandler.Create)
 	r.Get("/workouts/{id}/edit", workoutsHandler.Edit)
@@ -122,7 +134,7 @@ func buildRouter(db *sql.DB, tmpl *handlers.Templates) http.Handler {
 	r.Post("/workouts/{id}/activate", workoutsHandler.Activate)
 	r.Post("/workouts/{id}/delete", workoutsHandler.Delete)
 
-	dashboardHandler := handlers.NewDashboardHandler(db, nil, user.ID, tmpl)
+	dashboardHandler := handlers.NewDashboardHandler(db, nil, tmpl)
 	r.Get("/", dashboardHandler.Show)
 
 	return r

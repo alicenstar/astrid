@@ -14,6 +14,7 @@
     <header>
         <nav class="top-nav" aria-label="Main navigation">
             <a href="/" class="nav-brand">Astrid</a>
+            {{if .UserEmail}}
             <div class="nav-links">
                 <a href="/" {{if eq .ActiveNav "dashboard"}}class="active" aria-current="page"{{end}}>Dashboard</a>
                 <a href="/plans" {{if eq .ActiveNav "plans"}}class="active" aria-current="page"{{end}}>Plans</a>
@@ -21,6 +22,7 @@
                 <a href="/summary" {{if eq .ActiveNav "summary"}}class="active" aria-current="page"{{end}}>Summary</a>
                 <a href="/workouts" {{if eq .ActiveNav "workouts"}}class="active" aria-current="page"{{end}}>Workouts</a>
             </div>
+            {{end}}
             <button class="theme-toggle" aria-label="Toggle dark and light mode" onclick="let t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;localStorage.setItem('theme',t);this.textContent=t==='dark'?'\u2600\uFE0F':'\uD83C\uDF19'" id="theme-btn"></button>
             <script>document.getElementById("theme-btn").textContent=document.documentElement.dataset.theme==="dark"?"\u2600\uFE0F":"\uD83C\uDF19"</script>
         {{if .UserEmail}}

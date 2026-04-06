@@ -32,21 +32,13 @@ func EnsureDefaultUser(db *sql.DB) (*User, error) {
 
 	var u User
 	err := db.QueryRow(
-		`SELECT id, email, name, password_hash, auth_provider, google_id, created_at FROM users WHERE email = $1`, email,
+		`INSERT INTO users (email, name) VALUES ($1, $2)
+		 ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name
+		 RETURNING id, email, name, password_hash, auth_provider, google_id, created_at`,
+		email, name,
 	).Scan(&u.ID, &u.Email, &u.Name, &u.PasswordHash, &u.AuthProvider, &u.GoogleID, &u.CreatedAt)
-
-	if err == sql.ErrNoRows {
-		err = db.QueryRow(
-			`INSERT INTO users (email, name) VALUES ($1, $2) RETURNING id, email, name, password_hash, auth_provider, google_id, created_at`,
-			email, name,
-		).Scan(&u.ID, &u.Email, &u.Name, &u.PasswordHash, &u.AuthProvider, &u.GoogleID, &u.CreatedAt)
-		if err != nil {
-			return nil, fmt.Errorf("insert default user: %w", err)
-		}
-		return &u, nil
-	}
 	if err != nil {
-		return nil, fmt.Errorf("query default user: %w", err)
+		return nil, fmt.Errorf("ensure default user: %w", err)
 	}
 	return &u, nil
 }

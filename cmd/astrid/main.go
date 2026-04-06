@@ -84,6 +84,9 @@ func main() {
 	workoutLogsHandler := handlers.NewWorkoutLogsHandler(db, user.ID)
 	r.Post("/workouts/toggle-today", workoutLogsHandler.Toggle)
 
+	dashboardHandler := handlers.NewDashboardHandler(db, user.ID, tmpl)
+	r.Get("/", dashboardHandler.Show)
+
 	summaryHandler := handlers.NewSummaryHandler(db, user.ID, tmpl)
 	r.Get("/summary", summaryHandler.Show)
 

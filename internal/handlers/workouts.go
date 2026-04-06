@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"database/sql"
-	"html/template"
 	"net/http"
 	"strconv"
 
@@ -15,10 +14,10 @@ import (
 type WorkoutsHandler struct {
 	db   *sql.DB
 	uid  uuid.UUID
-	tmpl *template.Template
+	tmpl *Templates
 }
 
-func NewWorkoutsHandler(db *sql.DB, uid uuid.UUID, tmpl *template.Template) *WorkoutsHandler {
+func NewWorkoutsHandler(db *sql.DB, uid uuid.UUID, tmpl *Templates) *WorkoutsHandler {
 	return &WorkoutsHandler{db: db, uid: uid, tmpl: tmpl}
 }
 
@@ -34,7 +33,12 @@ func (h *WorkoutsHandler) List(w http.ResponseWriter, r *http.Request) {
 		"Splits":    splits,
 		"DayNames":  models.DayNames,
 	}
-	h.tmpl.ExecuteTemplate(w, "layout", data)
+	tmpl, err := h.tmpl.Render("workouts", data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	tmpl.ExecuteTemplate(w, "layout", data)
 }
 
 func (h *WorkoutsHandler) Create(w http.ResponseWriter, r *http.Request) {

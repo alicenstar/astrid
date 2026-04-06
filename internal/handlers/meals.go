@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"database/sql"
-	"html/template"
 	"net/http"
 	"strconv"
 	"time"
@@ -18,10 +17,10 @@ type MealsHandler struct {
 	db   *sql.DB
 	rdb  *redis.Client
 	uid  uuid.UUID
-	tmpl *template.Template
+	tmpl *Templates
 }
 
-func NewMealsHandler(db *sql.DB, rdb *redis.Client, uid uuid.UUID, tmpl *template.Template) *MealsHandler {
+func NewMealsHandler(db *sql.DB, rdb *redis.Client, uid uuid.UUID, tmpl *Templates) *MealsHandler {
 	return &MealsHandler{db: db, rdb: rdb, uid: uid, tmpl: tmpl}
 }
 
@@ -65,7 +64,12 @@ func (h *MealsHandler) DailyLog(w http.ResponseWriter, r *http.Request) {
 		"PrevDate":    prevDate,
 		"NextDate":    nextDate,
 	}
-	h.tmpl.ExecuteTemplate(w, "layout", data)
+	tmpl, err := h.tmpl.Render("log", data)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	tmpl.ExecuteTemplate(w, "layout", data)
 }
 
 func (h *MealsHandler) AddMeal(w http.ResponseWriter, r *http.Request) {

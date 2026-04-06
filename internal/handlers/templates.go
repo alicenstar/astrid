@@ -1,13 +1,26 @@
 package handlers
 
 import (
+	"fmt"
 	"html/template"
 	"path/filepath"
 
 	"github.com/alicenstar/astrid/internal/models"
 )
 
-func LoadTemplates(templatesDir string) (*template.Template, error) {
+type Templates struct {
+	pages map[string]*template.Template
+}
+
+func (t *Templates) Render(name string, data any) (*template.Template, error) {
+	tmpl, ok := t.pages[name]
+	if !ok {
+		return nil, fmt.Errorf("template %q not found", name)
+	}
+	return tmpl, nil
+}
+
+func LoadTemplates(templatesDir string) (*Templates, error) {
 	funcMap := template.FuncMap{
 		"dayTarget": func(days []models.CaloriePlanDay, dayOfWeek int) *int {
 			for _, d := range days {
@@ -47,17 +60,19 @@ func LoadTemplates(templatesDir string) (*template.Template, error) {
 		},
 	}
 
-	pattern := filepath.Join(templatesDir, "*.html")
-	partialsPattern := filepath.Join(templatesDir, "partials", "*.html")
+	layoutFile := filepath.Join(templatesDir, "layout.html")
+	pages := []string{"dashboard", "plans", "log", "summary", "workouts"}
 
-	tmpl, err := template.New("").Funcs(funcMap).ParseGlob(pattern)
-	if err != nil {
-		return nil, err
+	t := &Templates{pages: make(map[string]*template.Template)}
+
+	for _, page := range pages {
+		pageFile := filepath.Join(templatesDir, page+".html")
+		tmpl, err := template.New("").Funcs(funcMap).ParseFiles(layoutFile, pageFile)
+		if err != nil {
+			return nil, fmt.Errorf("parse %s: %w", page, err)
+		}
+		t.pages[page] = tmpl
 	}
-	tmpl, err = tmpl.ParseGlob(partialsPattern)
-	if err != nil {
-		// No partials yet is ok
-		return tmpl, nil
-	}
-	return tmpl, nil
+
+	return t, nil
 }

@@ -1,0 +1,11 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/astrid ./cmd/astrid/"
+  bin = "./tmp/astrid"
+  include_ext = ["go", "html", "css"]
+  exclude_dir = ["tmp", "chart", "migrations", "docs"]
+
+[log]
+  time = true

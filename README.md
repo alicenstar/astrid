@@ -6,12 +6,14 @@ Built with Go, HTMX, PostgreSQL, and Redis. Packaged as a Helm chart for Kuberne
 
 ## Features
 
-- **Calorie Plans** -- Create per-day calorie targets (e.g., higher on training days, lower on rest days). Set a plan as active to track against it.
-- **Daily Meal Log** -- Log meals with calories, protein, fiber, and cholesterol. See a real-time progress bar against your daily calorie target. Navigate between days.
-- **Workout Splits** -- Define weekly workout splits (e.g., Push/Pull/Legs) with planned exercises per day.
+- **Authentication** -- Email/password signup, Google OAuth login, and a one-click demo login. Session-based auth stored in Redis with 7-day TTL.
+- **Calorie Plans** -- Create and edit per-day calorie targets (e.g., higher on training days, lower on rest days). First plan auto-activates.
+- **Daily Meal Log** -- Log meals with calories, protein, fiber, and cholesterol. Real-time progress bar and % daily value tracking.
+- **Workout Splits** -- Define and edit weekly workout splits (e.g., Push/Pull/Legs) with planned exercises per day. First split auto-activates.
 - **Workout Tracking** -- Mark today's workout complete from the dashboard. Track consecutive-day streaks.
-- **Weekly Summary** -- View a 7-day calorie adherence table with color-coded percentages.
-- **Dashboard** -- At-a-glance view of today's calorie progress, planned workout, and current streak.
+- **Weekly Summary** -- 7-day calorie adherence table with color-coded percentages.
+- **Dashboard** -- At-a-glance view of today's calorie progress, planned workout, streak, and a health data sync preview.
+- **Dark/Light Mode** -- Toggle between themes; preference saved in localStorage.
 - **Health Endpoint** -- `GET /healthz` returns structured JSON with Postgres and Redis connectivity status.
 
 ## Architecture
@@ -20,10 +22,11 @@ Built with Go, HTMX, PostgreSQL, and Redis. Packaged as a Helm chart for Kuberne
 Go binary (chi router)
   ├── html/template + HTMX (server-rendered, no JS framework)
   ├── PostgreSQL (persistence: users, plans, logs, workouts)
-  └── Redis (caching: daily calorie rollups, workout streaks)
+  ├── Redis (sessions, caching: daily calorie rollups, workout streaks)
+  └── Auth middleware (session cookie → user context)
 ```
 
-Single binary serves the web UI, static assets, and API. Migrations run automatically on startup. A default user is bootstrapped on first run (no auth required).
+Single binary serves the web UI, static assets, and API. Migrations run automatically on startup. Public routes (login, signup, healthz) bypass auth; all other routes require a valid session.
 
 ## Local Development
 
@@ -48,6 +51,9 @@ docker run -d --name astrid-pg \
 docker run -d --name astrid-redis \
   -p 6379:6379 \
   redis:7-alpine
+
+# Create test database (for running tests)
+docker exec astrid-pg psql -U astrid -d postgres -c "CREATE DATABASE astrid_test OWNER astrid;"
 ```
 
 ### Run the app
@@ -57,7 +63,14 @@ cd /path/to/astrid
 go run ./cmd/astrid/
 ```
 
-The app starts on [http://localhost:8080](http://localhost:8080). Migrations run automatically.
+The app starts on [http://localhost:8080](http://localhost:8080). Migrations run automatically. You'll see the login page -- use **Demo Login** for quick access.
+
+For hot-reload during development:
+
+```bash
+go install github.com/air-verse/air@latest
+air
+```
 
 ### Environment variables
 
@@ -66,12 +79,25 @@ The app starts on [http://localhost:8080](http://localhost:8080). Migrations run
 | `PORT` | `8080` | HTTP listen port |
 | `DATABASE_URL` | `postgres://astrid:astrid@localhost:5432/astrid?sslmode=disable` | PostgreSQL connection string |
 | `REDIS_URL` | `redis://localhost:6379/0` | Redis connection string |
+| `GOOGLE_CLIENT_ID` | _(empty)_ | Google OAuth client ID (optional) |
+| `GOOGLE_CLIENT_SECRET` | _(empty)_ | Google OAuth client secret (optional) |
+| `GOOGLE_REDIRECT_URL` | _(empty)_ | Google OAuth redirect URL (optional) |
+
+When `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set, the Google login button appears on the login/signup pages. When unset, only email/password and demo login are available.
 
 ### Run tests
 
 ```bash
-go test ./... -v
+# Run all tests (use -p 1 to avoid cross-package DB conflicts)
+go test ./... -p 1 -v
+
+# Run specific package
+go test ./internal/handlers/ -v
+go test ./internal/models/ -v
+go test ./internal/auth/ -v
 ```
+
+Tests use the `astrid_test` database to avoid interfering with development data.
 
 ## Docker
 
@@ -127,6 +153,15 @@ helm install astrid ./chart/astrid \
 ```
 
 With `postgresql.enabled=false`, no PostgreSQL pod is deployed -- the app connects to the external instance. Same for Redis.
+
+### Google OAuth (optional)
+
+```bash
+helm install astrid ./chart/astrid \
+  --set auth.google.clientID=your-client-id \
+  --set auth.google.clientSecret=your-secret \
+  --set auth.google.redirectURL=https://astrid.example.com/auth/google/callback
+```
 
 ### TLS / HTTPS
 
@@ -186,8 +221,9 @@ The chart includes `values.schema.json` for validation. Run `helm lint .` to ver
 
 ```
 astrid/
-├── cmd/astrid/main.go           # Entry point
+├── cmd/astrid/main.go           # Entry point: config, DB, router, auth middleware
 ├── internal/
+│   ├── auth/                    # Session management, middleware, context helpers
 │   ├── config/                  # Env-based configuration
 │   ├── database/                # Postgres + Redis connections
 │   ├── handlers/                # HTTP handlers (chi)

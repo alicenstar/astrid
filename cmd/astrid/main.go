@@ -11,6 +11,7 @@ import (
 	"github.com/alicenstar/astrid/internal/config"
 	"github.com/alicenstar/astrid/internal/database"
 	"github.com/alicenstar/astrid/internal/handlers"
+	"github.com/alicenstar/astrid/internal/models"
 )
 
 func main() {
@@ -31,6 +32,12 @@ func main() {
 		log.Fatalf("Failed to connect to redis: %v", err)
 	}
 	defer rdb.Close()
+
+	user, err := models.EnsureDefaultUser(db)
+	if err != nil {
+		log.Fatalf("Failed to ensure default user: %v", err)
+	}
+	log.Printf("Running as user: %s (%s)", user.Name, user.ID)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)

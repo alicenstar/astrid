@@ -62,7 +62,7 @@ jobs:
           api-token: ${{ secrets.REPLICATED_API_TOKEN }}
           chart: astrid-0.1.0.tgz
           promote-channel: Unstable
-          version: pr-${{ github.event.pull_request.number }}-${{ github.sha }}
+          version: 0.1.0-pr.${{ github.event.pull_request.number }}+${{ github.sha }}
 
       - name: Create CMX cluster
         id: create-cluster

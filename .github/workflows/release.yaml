@@ -60,7 +60,7 @@ jobs:
           api-token: ${{ secrets.REPLICATED_API_TOKEN }}
           chart: astrid-0.1.0.tgz
           promote-channel: Unstable
-          version: ${{ github.sha }}
+          version: 0.1.0+${{ github.sha }}
 
       - name: Smoke test on CMX
         id: create-cluster

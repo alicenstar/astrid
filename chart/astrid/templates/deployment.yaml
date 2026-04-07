@@ -20,7 +20,7 @@ spec:
       {{- end }}
       initContainers:
         - name: wait-for-db
-          image: images.astrid.fit/proxy/astrid/docker.io/library/busybox:1.36
+          image: {{ .Values.initImage | default "images.astrid.fit/proxy/astrid/docker.io/library/busybox:1.36" }}
           command:
             - sh
             - -c

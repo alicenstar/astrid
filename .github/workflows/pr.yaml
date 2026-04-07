@@ -51,13 +51,18 @@ jobs:
           tags: |
             ${{ env.IMAGE_NAME }}:pr-${{ github.event.pull_request.number }}
 
+      - name: Package Helm chart
+        run: |
+          helm dependency build chart/astrid
+          helm package chart/astrid -d .
+
       - name: Create Replicated release
         id: create-release
         uses: replicatedhq/replicated-actions/create-release@v1
         with:
           app-slug: ${{ secrets.REPLICATED_APP }}
           api-token: ${{ secrets.REPLICATED_API_TOKEN }}
-          chart: chart/astrid
+          chart: astrid-0.1.0.tgz
           promote-channel: Unstable
           version: pr-${{ github.event.pull_request.number }}-${{ github.sha }}
 

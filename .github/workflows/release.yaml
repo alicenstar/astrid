@@ -41,7 +41,8 @@ jobs:
         run: |
           BASE=$(grep '^version:' chart/astrid/Chart.yaml | awk '{print $2}')
           echo "base=${BASE}" >> "$GITHUB_OUTPUT"
-          VERSION="${BASE}+${{ github.sha }}"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          VERSION="${BASE}+${SHORT_SHA}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Release version: ${VERSION}"
 

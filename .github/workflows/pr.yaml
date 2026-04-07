@@ -51,6 +51,17 @@ jobs:
           tags: |
             ${{ env.IMAGE_NAME }}:pr-${{ github.event.pull_request.number }}
 
+      - name: Set release version
+        id: version
+        run: |
+          BASE=$(grep '^version:' chart/astrid/Chart.yaml | awk '{print $2}')
+          VERSION="${BASE}-pr.${{ github.event.pull_request.number }}+${{ github.sha }}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "PR version: ${VERSION}"
+
+      - name: Stamp chart version
+        run: sed -i "s/^version:.*/version: ${{ steps.version.outputs.version }}/" chart/astrid/Chart.yaml
+
       - name: Package Helm chart
         run: helm package chart/astrid -d .
 
@@ -60,9 +71,9 @@ jobs:
         with:
           app-slug: ${{ secrets.REPLICATED_APP }}
           api-token: ${{ secrets.REPLICATED_API_TOKEN }}
-          chart: astrid-0.1.0.tgz
+          chart: astrid-${{ steps.version.outputs.version }}.tgz
           promote-channel: Unstable
-          version: 0.1.0-pr.${{ github.event.pull_request.number }}+${{ github.sha }}
+          version: ${{ steps.version.outputs.version }}
 
       - name: Create CMX cluster
         id: create-cluster

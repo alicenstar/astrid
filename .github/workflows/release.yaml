@@ -49,6 +49,17 @@ jobs:
       - name: Helm dependency build
         run: helm dependency build chart/astrid
 
+      - name: Set release version
+        id: version
+        run: |
+          BASE=$(grep '^version:' chart/astrid/Chart.yaml | awk '{print $2}')
+          VERSION="${BASE}+${{ github.sha }}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Release version: ${VERSION}"
+
+      - name: Stamp chart version
+        run: sed -i "s/^version:.*/version: ${{ steps.version.outputs.version }}/" chart/astrid/Chart.yaml
+
       - name: Package Helm chart
         run: helm package chart/astrid -d .
 
@@ -58,9 +69,9 @@ jobs:
         with:
           app-slug: ${{ secrets.REPLICATED_APP }}
           api-token: ${{ secrets.REPLICATED_API_TOKEN }}
-          chart: astrid-0.1.0.tgz
+          chart: astrid-${{ steps.version.outputs.version }}.tgz
           promote-channel: Unstable
-          version: 0.1.0+${{ github.sha }}
+          version: ${{ steps.version.outputs.version }}
 
       - name: Smoke test on CMX
         id: create-cluster

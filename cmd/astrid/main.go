@@ -130,6 +130,11 @@ func main() {
 
 		summaryHandler := handlers.NewSummaryHandler(db, rdb, tmpl)
 		r.Get("/summary", summaryHandler.Show)
+
+		if cfg.ReplicatedSDKURL != "" {
+			supportHandler := handlers.NewSupportHandler(cfg.ReplicatedSDKURL)
+			r.Post("/support/bundle", supportHandler.GenerateBundle)
+		}
 	})
 
 	log.Printf("Astrid listening on %s", cfg.Addr())

@@ -1,5 +1,5 @@
 image:
-  repository: alicenstar/astrid
+  repository: images.astrid.fit/proxy/astrid/docker.io/alicenstar/astrid
   tag: "latest"
   pullPolicy: Always
 

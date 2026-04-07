@@ -8,17 +8,19 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/alicenstar/astrid/internal/auth"
+	"github.com/alicenstar/astrid/internal/license"
 	"github.com/alicenstar/astrid/internal/models"
 )
 
 type DashboardHandler struct {
-	db   *sql.DB
-	rdb  *redis.Client
-	tmpl *Templates
+	db             *sql.DB
+	rdb            *redis.Client
+	tmpl           *Templates
+	licenseChecker LicenseChecker
 }
 
-func NewDashboardHandler(db *sql.DB, rdb *redis.Client, tmpl *Templates) *DashboardHandler {
-	return &DashboardHandler{db: db, rdb: rdb, tmpl: tmpl}
+func NewDashboardHandler(db *sql.DB, rdb *redis.Client, tmpl *Templates, lc LicenseChecker) *DashboardHandler {
+	return &DashboardHandler{db: db, rdb: rdb, tmpl: tmpl, licenseChecker: lc}
 }
 
 func (h *DashboardHandler) Show(w http.ResponseWriter, r *http.Request) {
@@ -54,25 +56,34 @@ func (h *DashboardHandler) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Streak
-	streak, err := models.GetWorkoutStreak(h.db, h.rdb, uid)
-	if err != nil {
-		h.tmpl.RenderError(w, "Could not load dashboard data", http.StatusInternalServerError)
-		return
+	// Streak — gated by license entitlement
+	var streak int
+	streaksEnabled := h.licenseChecker == nil || h.licenseChecker.IsFeatureEnabled("workout_streaks_enabled")
+	if streaksEnabled {
+		streak, err = models.GetWorkoutStreak(h.db, h.rdb, uid)
+		if err != nil {
+			h.tmpl.RenderError(w, "Could not load dashboard data", http.StatusInternalServerError)
+			return
+		}
 	}
 
+	ls := license.GetStatus(r)
 	data := map[string]any{
-		"Title":          "Dashboard",
-		"ActiveNav":      "dashboard",
-		"Today":          today.Format("Monday, January 2"),
-		"TodayDateStr":   today.Format("2006-01-02"),
-		"Summary":        summary,
-		"HasActivePlan":  activePlan != nil,
-		"HasTodayTarget": summary.CalorieTarget > 0,
-		"SplitDay":       splitDay,
-		"WorkoutLog":     workoutLog,
-		"WorkoutDone":    workoutLog != nil && workoutLog.Completed,
-		"Streak":         streak,
+		"Title":           "Dashboard",
+		"ActiveNav":       "dashboard",
+		"Today":           today.Format("Monday, January 2"),
+		"TodayDateStr":    today.Format("2006-01-02"),
+		"Summary":         summary,
+		"HasActivePlan":   activePlan != nil,
+		"HasTodayTarget":  summary.CalorieTarget > 0,
+		"SplitDay":        splitDay,
+		"WorkoutLog":      workoutLog,
+		"WorkoutDone":     workoutLog != nil && workoutLog.Completed,
+		"Streak":          streak,
+		"StreaksEnabled":  streaksEnabled,
+		"LicenseExpired":  ls.Expired,
+		"UpdateAvailable": ls.UpdateAvailable,
+		"UpdateVersion":   ls.UpdateVersion,
 	}
 	h.tmpl.Render(w, "dashboard", withUserEmail(r, data))
 }

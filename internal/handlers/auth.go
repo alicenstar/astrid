@@ -17,16 +17,21 @@ import (
 	"github.com/alicenstar/astrid/internal/models"
 )
 
-type AuthHandler struct {
-	db           *sql.DB
-	rdb          *redis.Client
-	tmpl         *Templates
-	oauthConfig  *oauth2.Config
-	oauthEnabled bool
+type LicenseChecker interface {
+	IsFeatureEnabled(field string) bool
 }
 
-func NewAuthHandler(db *sql.DB, rdb *redis.Client, tmpl *Templates, googleClientID, googleSecret, googleRedirectURL string) *AuthHandler {
-	h := &AuthHandler{db: db, rdb: rdb, tmpl: tmpl}
+type AuthHandler struct {
+	db             *sql.DB
+	rdb            *redis.Client
+	tmpl           *Templates
+	oauthConfig    *oauth2.Config
+	oauthEnabled   bool
+	licenseChecker LicenseChecker
+}
+
+func NewAuthHandler(db *sql.DB, rdb *redis.Client, tmpl *Templates, googleClientID, googleSecret, googleRedirectURL string, lc LicenseChecker) *AuthHandler {
+	h := &AuthHandler{db: db, rdb: rdb, tmpl: tmpl, licenseChecker: lc}
 	if googleClientID != "" && googleSecret != "" {
 		h.oauthEnabled = true
 		h.oauthConfig = &oauth2.Config{
@@ -52,10 +57,14 @@ func (h *AuthHandler) setSessionCookie(w http.ResponseWriter, sessionID string) 
 }
 
 func (h *AuthHandler) LoginPage(w http.ResponseWriter, r *http.Request) {
+	googleEnabled := h.oauthEnabled
+	if h.licenseChecker != nil {
+		googleEnabled = googleEnabled && h.licenseChecker.IsFeatureEnabled("google_oauth_enabled")
+	}
 	data := map[string]any{
 		"Title":         "Log In",
 		"ActiveNav":     "",
-		"GoogleEnabled": h.oauthEnabled,
+		"GoogleEnabled": googleEnabled,
 	}
 	h.tmpl.Render(w, "login", data)
 }
@@ -200,6 +209,10 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) GoogleLogin(w http.ResponseWriter, r *http.Request) {
 	if !h.oauthEnabled {
 		http.Redirect(w, r, "/login", http.StatusSeeOther)
+		return
+	}
+	if h.licenseChecker != nil && !h.licenseChecker.IsFeatureEnabled("google_oauth_enabled") {
+		http.Error(w, "Google OAuth is not enabled for this license", http.StatusForbidden)
 		return
 	}
 	url := h.oauthConfig.AuthCodeURL("state")

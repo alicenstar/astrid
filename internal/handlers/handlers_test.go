@@ -114,7 +114,7 @@ func buildRouter(db *sql.DB, tmpl *handlers.Templates) http.Handler {
 	r := chi.NewRouter()
 
 	// Public auth routes (no auth middleware)
-	authHandler := handlers.NewAuthHandler(db, handlerRDB, tmpl, "", "", "")
+	authHandler := handlers.NewAuthHandler(db, handlerRDB, tmpl, "", "", "", nil)
 	r.Group(func(r chi.Router) {
 		r.Get("/login", authHandler.LoginPage)
 		r.Post("/login", authHandler.Login)
@@ -158,7 +158,7 @@ func buildRouter(db *sql.DB, tmpl *handlers.Templates) http.Handler {
 		r.Post("/workouts/{id}/activate", workoutsHandler.Activate)
 		r.Post("/workouts/{id}/delete", workoutsHandler.Delete)
 
-		dashboardHandler := handlers.NewDashboardHandler(db, nil, tmpl)
+		dashboardHandler := handlers.NewDashboardHandler(db, nil, tmpl, nil)
 		r.Get("/", dashboardHandler.Show)
 	})
 

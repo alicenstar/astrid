@@ -5,7 +5,7 @@ global:
 replicaCount: 1
 
 image:
-  repository: alicenstar/astrid
+  repository: images.astrid.fit/proxy/astrid/docker.io/alicenstar/astrid
   tag: "0.1.0"
   pullPolicy: Always
 
@@ -38,8 +38,8 @@ resources:
 postgresql:
   enabled: true
   image:
-    registry: docker.io
-    repository: bitnamilegacy/postgresql
+    registry: images.astrid.fit
+    repository: proxy/astrid/docker.io/bitnamilegacy/postgresql
     tag: 17.2.0-debian-12-r5
   auth:
     username: astrid
@@ -66,8 +66,8 @@ externalDatabase:
 redis:
   enabled: true
   image:
-    registry: docker.io
-    repository: bitnamilegacy/redis
+    registry: images.astrid.fit
+    repository: proxy/astrid/docker.io/bitnamilegacy/redis
     tag: 7.4.2-debian-12-r0
   architecture: standalone
   auth:

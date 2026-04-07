@@ -11,6 +11,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/alicenstar/astrid/internal/auth"
+	"github.com/alicenstar/astrid/internal/license"
 	"github.com/alicenstar/astrid/internal/models"
 )
 
@@ -56,18 +57,22 @@ func (h *MealsHandler) DailyLog(w http.ResponseWriter, r *http.Request) {
 	prevDate := date.AddDate(0, 0, -1).Format("2006-01-02")
 	nextDate := date.AddDate(0, 0, 1).Format("2006-01-02")
 
+	ls := license.GetStatus(r)
 	data := map[string]any{
-		"Title":          "Daily Log",
-		"ActiveNav":      "log",
-		"Log":            log,
-		"Summary":        summary,
-		"HasActivePlan":  activePlan != nil,
-		"HasTodayTarget": summary.CalorieTarget > 0,
-		"Date":           date,
-		"DateStr":        date.Format("2006-01-02"),
-		"DateDisplay":    date.Format("Monday, January 2"),
-		"PrevDate":       prevDate,
-		"NextDate":       nextDate,
+		"Title":           "Daily Log",
+		"ActiveNav":       "log",
+		"Log":             log,
+		"Summary":         summary,
+		"HasActivePlan":   activePlan != nil,
+		"HasTodayTarget":  summary.CalorieTarget > 0,
+		"Date":            date,
+		"DateStr":         date.Format("2006-01-02"),
+		"DateDisplay":     date.Format("Monday, January 2"),
+		"PrevDate":        prevDate,
+		"NextDate":        nextDate,
+		"LicenseExpired":  ls.Expired,
+		"UpdateAvailable": ls.UpdateAvailable,
+		"UpdateVersion":   ls.UpdateVersion,
 	}
 	h.tmpl.Render(w, "log", withUserEmail(r, data))
 }

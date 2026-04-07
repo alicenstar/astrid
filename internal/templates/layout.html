@@ -33,6 +33,16 @@
         {{end}}
         </nav>
     </header>
+    {{- if .LicenseExpired }}
+    <div style="background:#dc2626;color:white;padding:12px;text-align:center;font-weight:bold;">
+      Your license has expired. Please contact your administrator to renew.
+    </div>
+    {{- end }}
+    {{- if .UpdateAvailable }}
+    <div style="background:#2563eb;color:white;padding:12px;text-align:center;">
+      A new version ({{ .UpdateVersion }}) is available. Contact your administrator to upgrade.
+    </div>
+    {{- end }}
     <main id="main-content" class="container">
         {{template "content" .}}
     </main>

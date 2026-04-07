@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/alicenstar/astrid/internal/auth"
+	"github.com/alicenstar/astrid/internal/license"
 	"github.com/alicenstar/astrid/internal/models"
 )
 
@@ -28,11 +29,15 @@ func (h *WorkoutsHandler) List(w http.ResponseWriter, r *http.Request) {
 		h.tmpl.RenderError(w, "Could not load workout splits", http.StatusInternalServerError)
 		return
 	}
+	ls := license.GetStatus(r)
 	data := map[string]any{
-		"Title":     "Workout Splits",
-		"ActiveNav": "workouts",
-		"Splits":    splits,
-		"DayNames":  models.DayNames,
+		"Title":           "Workout Splits",
+		"ActiveNav":       "workouts",
+		"Splits":          splits,
+		"DayNames":        models.DayNames,
+		"LicenseExpired":  ls.Expired,
+		"UpdateAvailable": ls.UpdateAvailable,
+		"UpdateVersion":   ls.UpdateVersion,
 	}
 	h.tmpl.Render(w, "workouts", withUserEmail(r, data))
 }
@@ -84,12 +89,16 @@ func (h *WorkoutsHandler) Edit(w http.ResponseWriter, r *http.Request) {
 		dayLabels[d.DayOfWeek] = d.Label
 	}
 
+	ls := license.GetStatus(r)
 	data := map[string]any{
-		"Title":     "Edit Split",
-		"ActiveNav": "workouts",
-		"Split":     split,
-		"DayLabels": dayLabels,
-		"DayNames":  models.DayNames,
+		"Title":           "Edit Split",
+		"ActiveNav":       "workouts",
+		"Split":           split,
+		"DayLabels":       dayLabels,
+		"DayNames":        models.DayNames,
+		"LicenseExpired":  ls.Expired,
+		"UpdateAvailable": ls.UpdateAvailable,
+		"UpdateVersion":   ls.UpdateVersion,
 	}
 	h.tmpl.Render(w, "workout_edit", withUserEmail(r, data))
 }

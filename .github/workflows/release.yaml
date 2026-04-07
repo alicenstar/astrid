@@ -58,7 +58,8 @@ jobs:
           echo "Release version: ${VERSION}"
 
       - name: Stamp chart version
-        run: sed -i "s/^version:.*/version: ${{ steps.version.outputs.version }}/" chart/astrid/Chart.yaml
+        run: |
+          sed -i "s/^version:.*/version: ${{ steps.version.outputs.version }}/" chart/astrid/Chart.yaml
 
       - name: Package Helm chart
         run: helm package chart/astrid -d .
@@ -79,15 +80,23 @@ jobs:
         with:
           api-token: ${{ secrets.REPLICATED_API_TOKEN }}
           kubernetes-distribution: k3s
-          kubernetes-version: "1.31"
+          kubernetes-version: "1.35"
           ttl: 20m
           export-kubeconfig: true
+
+      - name: Create Docker Hub pull secret
+        run: |
+          kubectl create secret docker-registry dockerhub \
+            --docker-server=https://index.docker.io/v1/ \
+            --docker-username=${{ secrets.DOCKERHUB_USERNAME }} \
+            --docker-password=${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Deploy and verify
         run: |
           helm install astrid chart/astrid \
             --set image.repository=${{ env.IMAGE_NAME }} \
             --set image.tag=${{ github.sha }} \
+            --set imagePullSecrets[0].name=dockerhub \
             --wait --timeout 5m
           kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=astrid --timeout=120s
 

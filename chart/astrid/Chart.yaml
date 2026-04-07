@@ -14,3 +14,6 @@ dependencies:
     version: "20.6.2"
     repository: "https://charts.bitnami.com/bitnami"
     condition: redis.enabled
+  - name: replicated
+    repository: oci://registry.replicated.com/library
+    version: "1.19.0"

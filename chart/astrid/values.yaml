@@ -95,6 +95,10 @@ tls:
     issuerName: letsencrypt-prod
     issuerKind: ClusterIssuer
 
+# --- Replicated SDK ---
+replicated:
+  enabled: true
+
 # --- Auth ---
 auth:
   google:

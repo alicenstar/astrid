@@ -8,9 +8,9 @@ appVersion: "0.1.0"
 dependencies:
   - name: postgresql
     version: "16.4.1"
-    repository: "https://charts.bitnami.com/bitnami"
+    repository: "oci://registry-1.docker.io/bitnamicharts"
     condition: postgresql.enabled
   - name: redis
     version: "20.6.2"
-    repository: "https://charts.bitnami.com/bitnami"
+    repository: "oci://registry-1.docker.io/bitnamicharts"
     condition: redis.enabled

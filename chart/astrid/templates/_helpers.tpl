@@ -25,6 +25,37 @@ postgres://{{ .Values.externalDatabase.user }}:{{ .Values.externalDatabase.passw
 {{- end -}}
 {{- end -}}
 
+{{- define "astrid.imagePullSecrets" -}}
+  {{- $pullSecrets := list }}
+  {{- with ((.Values.global).imagePullSecrets) -}}
+    {{- range . -}}
+      {{- if kindIs "map" . -}}
+        {{- $pullSecrets = append $pullSecrets .name -}}
+      {{- else -}}
+        {{- $pullSecrets = append $pullSecrets . -}}
+      {{- end }}
+    {{- end -}}
+  {{- end -}}
+  {{- with .Values.imagePullSecrets -}}
+    {{- range . -}}
+      {{- if kindIs "map" . -}}
+        {{- $pullSecrets = append $pullSecrets .name -}}
+      {{- else -}}
+        {{- $pullSecrets = append $pullSecrets . -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+  {{- if hasKey (default dict (default dict .Values.global).replicated) "dockerconfigjson" }}
+    {{- $pullSecrets = append $pullSecrets "enterprise-pull-secret" -}}
+  {{- end -}}
+  {{- if (not (empty $pullSecrets)) }}
+imagePullSecrets:
+    {{- range $pullSecrets | uniq }}
+  - name: {{ . }}
+    {{- end }}
+  {{- end }}
+{{- end -}}
+
 {{- define "astrid.redisURL" -}}
 {{- if .Values.redis.enabled -}}
 redis://{{ include "astrid.fullname" . }}-redis-master:6379/0

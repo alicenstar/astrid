@@ -86,11 +86,19 @@ jobs:
           ttl: 20m
           export-kubeconfig: true
 
+      - name: Create Docker Hub pull secret
+        run: |
+          kubectl create secret docker-registry dockerhub \
+            --docker-server=https://index.docker.io/v1/ \
+            --docker-username=${{ secrets.DOCKERHUB_USERNAME }} \
+            --docker-password=${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Deploy to test cluster
         run: |
           helm install astrid chart/astrid \
             --set image.repository=${{ env.IMAGE_NAME }} \
             --set image.tag=pr-${{ github.event.pull_request.number }} \
+            --set imagePullSecrets[0].name=dockerhub \
             --wait --timeout 5m
 
       - name: Verify deployment

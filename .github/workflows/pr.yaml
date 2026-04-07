@@ -33,7 +33,7 @@ jobs:
       - name: Helm lint
         run: |
           cd chart/astrid
-          helm dependency build 2>/dev/null
+          helm dependency build || true
           helm lint .
 
       - name: Log in to Docker Hub

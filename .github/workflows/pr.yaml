@@ -106,7 +106,17 @@ jobs:
             --set redis.image.registry=docker.io \
             --set redis.image.repository=bitnamilegacy/redis \
             --set initImage=busybox:1.36 \
-            --wait --timeout 5m
+            --wait --timeout 5m || true
+
+      - name: Debug pod status
+        if: always()
+        run: |
+          echo "=== PODS ==="
+          kubectl get pods -A
+          echo "=== DESCRIBE FAILING PODS ==="
+          kubectl get pods --no-headers | awk '$3 != "Running" && $3 != "Completed" {print $1}' | xargs -I{} kubectl describe pod {}
+          echo "=== EVENTS ==="
+          kubectl get events --sort-by='.lastTimestamp' | tail -30
 
       - name: Verify deployment
         run: |

@@ -1,0 +1,92 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches: [main]
+
+env:
+  IMAGE_NAME: alicenstar/astrid
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+
+      - name: Run tests
+        run: |
+          docker run -d --name pg -e POSTGRES_USER=astrid -e POSTGRES_PASSWORD=astrid -e POSTGRES_DB=astrid -p 5432:5432 postgres:16-alpine
+          docker run -d --name redis -p 6379:6379 redis:7-alpine
+          sleep 3
+          docker exec pg psql -U astrid -d postgres -c "CREATE DATABASE astrid_test OWNER astrid;" || true
+          go test ./... -p 1 -count=1
+
+      - name: Helm lint
+        run: |
+          cd chart/astrid
+          helm dependency build 2>/dev/null
+          helm lint .
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:pr-${{ github.event.pull_request.number }}
+
+      - name: Create Replicated release
+        id: create-release
+        uses: replicatedhq/replicated-actions/create-release@v1
+        with:
+          app-slug: ${{ secrets.REPLICATED_APP }}
+          api-token: ${{ secrets.REPLICATED_API_TOKEN }}
+          chart: chart/astrid
+          promote-channel: Unstable
+          version: pr-${{ github.event.pull_request.number }}-${{ github.sha }}
+
+      - name: Create CMX cluster
+        id: create-cluster
+        uses: replicatedhq/replicated-actions/create-cluster@v1
+        with:
+          api-token: ${{ secrets.REPLICATED_API_TOKEN }}
+          kubernetes-distribution: k3s
+          kubernetes-version: "1.31"
+          ttl: 20m
+          export-kubeconfig: true
+
+      - name: Deploy to test cluster
+        run: |
+          helm dependency build chart/astrid
+          helm install astrid chart/astrid \
+            --set image.repository=${{ env.IMAGE_NAME }} \
+            --set image.tag=pr-${{ github.event.pull_request.number }} \
+            --wait --timeout 5m
+
+      - name: Verify deployment
+        run: |
+          kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=astrid --timeout=120s
+          kubectl get pods
+
+      - name: Remove CMX cluster
+        if: always() && steps.create-cluster.outputs.cluster-id != ''
+        uses: replicatedhq/replicated-actions/remove-cluster@v1
+        with:
+          api-token: ${{ secrets.REPLICATED_API_TOKEN }}
+          cluster-id: ${{ steps.create-cluster.outputs.cluster-id }}

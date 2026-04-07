@@ -5,7 +5,7 @@ global:
 replicaCount: 1
 
 image:
-  repository: astrid
+  repository: alicenstar/astrid
   tag: "0.1.0"
   pullPolicy: Always
 

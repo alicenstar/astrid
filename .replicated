@@ -1,0 +1,3 @@
+appSlug: "astrid"
+charts:
+  - path: ./chart/astrid

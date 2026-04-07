@@ -2,3 +2,4 @@ tmp/
 /astrid
 .DS_Store
 docs/superpowers/plans/
+chart/*/charts/*.tgz

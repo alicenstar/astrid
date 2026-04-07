@@ -60,7 +60,8 @@ jobs:
           echo "PR version: ${VERSION}"
 
       - name: Stamp chart version
-        run: sed -i "s/^version:.*/version: ${{ steps.version.outputs.version }}/" chart/astrid/Chart.yaml
+        run: |
+          sed -i "s/^version:.*/version: ${{ steps.version.outputs.version }}/" chart/astrid/Chart.yaml
 
       - name: Package Helm chart
         run: helm package chart/astrid -d .

@@ -20,7 +20,7 @@ spec:
       {{- end }}
       initContainers:
         - name: wait-for-db
-          image: busybox:1.36
+          image: {{ .Values.initImage | default "images.astrid.fit/proxy/astrid/docker.io/library/busybox:1.36" }}
           command:
             - sh
             - -c
@@ -68,6 +68,8 @@ spec:
             - name: GOOGLE_REDIRECT_URL
               value: {{ .Values.auth.google.redirectURL | quote }}
             {{- end }}
+            - name: REPLICATED_SDK_URL
+              value: "http://{{ .Release.Name }}-replicated:3000"
           livenessProbe:
             httpGet:
               path: /healthz

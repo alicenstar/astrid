@@ -28,7 +28,7 @@
     <div class="card">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2>Today's Workout</h2>
-            {{if gt .Streak 0}}
+            {{if and .StreaksEnabled (gt .Streak 0)}}
             <span class="streak-badge" aria-label="{{.Streak}} day workout streak">{{.Streak}} day streak</span>
             {{end}}
         </div>

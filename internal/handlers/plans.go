@@ -11,6 +11,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/alicenstar/astrid/internal/auth"
+	"github.com/alicenstar/astrid/internal/license"
 	"github.com/alicenstar/astrid/internal/models"
 )
 
@@ -39,11 +40,15 @@ func (h *PlansHandler) List(w http.ResponseWriter, r *http.Request) {
 		h.tmpl.RenderError(w, "Could not load calorie plans", http.StatusInternalServerError)
 		return
 	}
+	ls := license.GetStatus(r)
 	data := map[string]any{
-		"Title":     "Calorie Plans",
-		"ActiveNav": "plans",
-		"Plans":     plans,
-		"DayNames":  models.DayNames,
+		"Title":           "Calorie Plans",
+		"ActiveNav":       "plans",
+		"Plans":           plans,
+		"DayNames":        models.DayNames,
+		"LicenseExpired":  ls.Expired,
+		"UpdateAvailable": ls.UpdateAvailable,
+		"UpdateVersion":   ls.UpdateVersion,
 	}
 	h.tmpl.Render(w, "plans", withUserEmail(r, data))
 }
@@ -114,12 +119,16 @@ func (h *PlansHandler) Edit(w http.ResponseWriter, r *http.Request) {
 		dayTargets[d.DayOfWeek] = d.CalorieTarget
 	}
 
+	ls := license.GetStatus(r)
 	data := map[string]any{
-		"Title":      "Edit Plan",
-		"ActiveNav":  "plans",
-		"Plan":       plan,
-		"DayTargets": dayTargets,
-		"DayNames":   models.DayNames,
+		"Title":           "Edit Plan",
+		"ActiveNav":       "plans",
+		"Plan":            plan,
+		"DayTargets":      dayTargets,
+		"DayNames":        models.DayNames,
+		"LicenseExpired":  ls.Expired,
+		"UpdateAvailable": ls.UpdateAvailable,
+		"UpdateVersion":   ls.UpdateVersion,
 	}
 	h.tmpl.Render(w, "plan_edit", withUserEmail(r, data))
 }

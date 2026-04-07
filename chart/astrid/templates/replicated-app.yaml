@@ -1,0 +1,16 @@
+{{- if .Capabilities.APIVersions.Has "kots.io/v1beta1" }}
+apiVersion: kots.io/v1beta1
+kind: Application
+metadata:
+  name: astrid
+spec:
+  title: Astrid
+  statusInformers:
+    - deployment/{{ include "astrid.fullname" . }}
+    - statefulset/{{ include "astrid.fullname" . }}-postgresql
+  ports:
+    - serviceName: {{ include "astrid.fullname" . }}
+      servicePort: {{ .Values.service.port }}
+      localPort: 8080
+      applicationUrl: "http://astrid.local"
+{{- end }}

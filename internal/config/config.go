@@ -12,6 +12,7 @@ type Config struct {
 	GoogleClientID    string
 	GoogleSecret      string
 	GoogleRedirectURL string
+	ReplicatedSDKURL  string
 }
 
 func Load() *Config {
@@ -22,6 +23,7 @@ func Load() *Config {
 		GoogleClientID:    os.Getenv("GOOGLE_CLIENT_ID"),
 		GoogleSecret:      os.Getenv("GOOGLE_CLIENT_SECRET"),
 		GoogleRedirectURL: os.Getenv("GOOGLE_REDIRECT_URL"),
+		ReplicatedSDKURL:  getEnv("REPLICATED_SDK_URL", ""),
 	}
 }
 

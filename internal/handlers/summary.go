@@ -8,6 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"github.com/alicenstar/astrid/internal/auth"
+	"github.com/alicenstar/astrid/internal/license"
 	"github.com/alicenstar/astrid/internal/models"
 )
 
@@ -72,14 +73,18 @@ func (h *SummaryHandler) Show(w http.ResponseWriter, r *http.Request) {
 		weekAdherence = totalActual * 100 / totalTarget
 	}
 
+	ls := license.GetStatus(r)
 	data := map[string]any{
-		"Title":         "Weekly Summary",
-		"ActiveNav":     "summary",
-		"Days":          rows,
-		"TotalTarget":   totalTarget,
-		"TotalActual":   totalActual,
-		"WeekAdherence": weekAdherence,
-		"WeekOf":        weekStart.Format("January 2"),
+		"Title":           "Weekly Summary",
+		"ActiveNav":       "summary",
+		"Days":            rows,
+		"TotalTarget":     totalTarget,
+		"TotalActual":     totalActual,
+		"WeekAdherence":   weekAdherence,
+		"WeekOf":          weekStart.Format("January 2"),
+		"LicenseExpired":  ls.Expired,
+		"UpdateAvailable": ls.UpdateAvailable,
+		"UpdateVersion":   ls.UpdateVersion,
 	}
 	h.tmpl.Render(w, "summary", withUserEmail(r, data))
 }

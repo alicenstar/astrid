@@ -1,7 +1,8 @@
 global:
   security:
     allowInsecureImages: true
-  imagePullSecrets: []
+  imagePullSecrets:
+    - name: enterprise-pull-secret
 
 replicaCount: 1
 

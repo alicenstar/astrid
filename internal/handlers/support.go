@@ -7,18 +7,34 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/alicenstar/astrid/internal/license"
 )
 
 type SupportHandler struct {
 	sdkURL string
+	tmpl   *Templates
 	client *http.Client
 }
 
-func NewSupportHandler(sdkURL string) *SupportHandler {
+func NewSupportHandler(sdkURL string, tmpl *Templates) *SupportHandler {
 	return &SupportHandler{
 		sdkURL: sdkURL,
+		tmpl:   tmpl,
 		client: &http.Client{Timeout: 5 * time.Minute},
 	}
+}
+
+func (h *SupportHandler) Page(w http.ResponseWriter, r *http.Request) {
+	ls := license.GetStatus(r)
+	data := map[string]any{
+		"Title":           "Support",
+		"ActiveNav":       "support",
+		"LicenseExpired":  ls.Expired,
+		"UpdateAvailable": ls.UpdateAvailable,
+		"UpdateVersion":   ls.UpdateVersion,
+	}
+	h.tmpl.Render(w, "support", withUserEmail(r, data))
 }
 
 func (h *SupportHandler) GenerateBundle(w http.ResponseWriter, r *http.Request) {

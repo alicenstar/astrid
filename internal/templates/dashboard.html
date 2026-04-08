@@ -69,17 +69,4 @@
     </div>
     <p style="color:var(--text-muted);">Connect Fitbit, Google Health, and other services to automatically import steps, calories, and workouts.</p>
 </div>
-<div class="card" style="margin-top:1rem;">
-  <h3>Support</h3>
-  <p style="color:var(--text-muted);">Generate a support bundle to help diagnose issues.</p>
-  <button
-    hx-post="/support/bundle"
-    hx-target="#bundle-status"
-    hx-indicator="#bundle-spinner"
-    class="btn btn-ghost">
-    Generate Support Bundle
-  </button>
-  <span id="bundle-spinner" class="htmx-indicator" style="margin-left:8px;">Generating...</span>
-  <div id="bundle-status" style="margin-top:8px;"></div>
-</div>
 {{end}}

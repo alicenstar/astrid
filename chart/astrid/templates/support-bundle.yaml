@@ -98,6 +98,21 @@ stringData:
               - pass:
                   message: "PostgreSQL StatefulSet is running."
 
+        - statefulsetStatus:
+            name: {{ .Release.Name }}-redis-master
+            namespace: {{ .Release.Namespace }}
+            outcomes:
+              - fail:
+                  when: "absent"
+                  message: "Redis StatefulSet is missing."
+              - fail:
+                  when: "< 1"
+                  message: |
+                    Redis has 0 ready replicas. Sessions and caching are DOWN.
+                    Users cannot log in. Check stateful/redis/ logs.
+              - pass:
+                  message: "Redis StatefulSet is running."
+
         - deploymentStatus:
             name: {{ .Release.Name }}-replicated
             namespace: {{ .Release.Namespace }}

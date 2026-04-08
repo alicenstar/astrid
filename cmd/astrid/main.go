@@ -42,9 +42,11 @@ func main() {
 		log.Fatalf("Failed to load templates: %v", err)
 	}
 
+	var licenseChecker handlers.LicenseChecker
 	var licenseClient *license.Client
 	if cfg.ReplicatedSDKURL != "" {
 		licenseClient = license.NewClient(cfg.ReplicatedSDKURL)
+		licenseChecker = licenseClient
 		reporter := metrics.NewReplicatedReporter(cfg.ReplicatedSDKURL)
 		go func() {
 			ticker := time.NewTicker(4 * time.Hour)
@@ -77,7 +79,7 @@ func main() {
 	)
 	r.Get("/healthz", healthHandler.ServeHTTP)
 
-	authHandler := handlers.NewAuthHandler(db, rdb, tmpl, cfg.GoogleClientID, cfg.GoogleSecret, cfg.GoogleRedirectURL, licenseClient)
+	authHandler := handlers.NewAuthHandler(db, rdb, tmpl, cfg.GoogleClientID, cfg.GoogleSecret, cfg.GoogleRedirectURL, licenseChecker)
 	r.Get("/login", authHandler.LoginPage)
 	r.Post("/login", authHandler.Login)
 	r.Get("/signup", authHandler.SignupPage)
@@ -94,7 +96,7 @@ func main() {
 			r.Use(license.StatusMiddleware(licenseClient))
 		}
 
-		dashboardHandler := handlers.NewDashboardHandler(db, rdb, tmpl, licenseClient)
+		dashboardHandler := handlers.NewDashboardHandler(db, rdb, tmpl, licenseChecker)
 		r.Get("/", dashboardHandler.Show)
 
 		plansHandler := handlers.NewPlansHandler(db, rdb, tmpl)

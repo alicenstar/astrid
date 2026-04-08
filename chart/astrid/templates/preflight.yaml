@@ -33,7 +33,7 @@ stringData:
         - textAnalyze:
             checkName: "External PostgreSQL Connectivity"
             fileName: external-postgres.json
-            regex: "."
+            regex: '"response"'
             outcomes:
               - pass:
                   when: "true"

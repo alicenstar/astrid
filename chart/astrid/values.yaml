@@ -101,6 +101,7 @@ tls:
 # --- Replicated SDK ---
 replicated:
   enabled: true
+  nameOverride: astrid-sdk
 
 # --- Auth ---
 auth:

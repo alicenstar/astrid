@@ -14,6 +14,7 @@ spec:
       labels:
         {{- include "astrid.selectorLabels" . | nindent 8 }}
     spec:
+      serviceAccountName: {{ include "astrid.fullname" . }}
       {{- include "astrid.imagePullSecrets" . | nindent 6 }}
       initContainers:
         - name: wait-for-db

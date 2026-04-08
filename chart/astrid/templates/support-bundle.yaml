@@ -45,16 +45,19 @@ stringData:
             limits:
               maxLines: 2000
 
-        - http:
-            collectorName: health-check
-            get:
-              url: http://{{ include "astrid.fullname" . }}:{{ .Values.service.port }}/healthz
-              timeout: 10s
+        - exec:
+            name: health-check
+            collectorName: astrid-healthz
+            selector:
+              - app.kubernetes.io/name=astrid
+            namespace: {{ .Release.Namespace }}
+            command: ["wget", "-qO-", "http://localhost:{{ .Values.service.port }}/healthz"]
+            timeout: 10s
 
       analyzers:
         - textAnalyze:
             checkName: "Astrid Health Endpoint"
-            fileName: health-check.json
+            fileName: health-check/*/*/astrid-healthz.json
             regex: '"status"\s*:\s*"ok"'
             outcomes:
               - pass:
@@ -114,7 +117,7 @@ stringData:
                   message: "Redis StatefulSet is running."
 
         - deploymentStatus:
-            name: {{ .Release.Name }}-replicated
+            name: {{ .Values.replicated.nameOverride | default (printf "%s-replicated" .Release.Name) }}
             namespace: {{ .Release.Namespace }}
             outcomes:
               - fail:
@@ -131,7 +134,7 @@ stringData:
 
         - textAnalyze:
             checkName: "Database Connection Failure"
-            fileName: app/astrid/*.log
+            fileName: app/astrid/*/*.log
             regex: "Failed to connect to postgres|pq: connection refused|pq: the database system is starting up"
             outcomes:
               - fail:
@@ -146,7 +149,7 @@ stringData:
 
         - textAnalyze:
             checkName: "Redis Connection Failure"
-            fileName: app/astrid/*.log
+            fileName: app/astrid/*/*.log
             regex: "Failed to connect to redis|dial tcp.*:6379.*connection refused"
             outcomes:
               - fail:

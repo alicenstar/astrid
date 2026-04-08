@@ -13,11 +13,13 @@ type Config struct {
 	GoogleSecret      string
 	GoogleRedirectURL string
 	ReplicatedSDKURL  string
+	AppVersion        string
 }
 
 func Load() *Config {
 	return &Config{
 		Port:              getEnv("PORT", "8080"),
+		AppVersion:        getEnv("APP_VERSION", "dev"),
 		DatabaseURL:       getEnv("DATABASE_URL", "postgres://astrid:astrid@localhost:5432/astrid?sslmode=disable"),
 		RedisURL:          getEnv("REDIS_URL", "redis://localhost:6379/0"),
 		GoogleClientID:    os.Getenv("GOOGLE_CLIENT_ID"),

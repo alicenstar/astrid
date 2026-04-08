@@ -164,7 +164,7 @@ func buildRouter(db *sql.DB, tmpl *handlers.Templates) http.Handler {
 		summaryHandler := handlers.NewSummaryHandler(db, nil, tmpl)
 		r.Get("/summary", summaryHandler.Show)
 
-		supportHandler := handlers.NewSupportHandler("", tmpl)
+		supportHandler := handlers.NewSupportHandler("", "dev", tmpl)
 		r.Get("/support", supportHandler.Page)
 	})
 

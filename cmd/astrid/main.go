@@ -131,7 +131,7 @@ func main() {
 		summaryHandler := handlers.NewSummaryHandler(db, rdb, tmpl)
 		r.Get("/summary", summaryHandler.Show)
 
-		supportHandler := handlers.NewSupportHandler(cfg.ReplicatedSDKURL, tmpl)
+		supportHandler := handlers.NewSupportHandler(cfg.ReplicatedSDKURL, cfg.AppVersion, tmpl)
 		r.Get("/support", supportHandler.Page)
 		if cfg.ReplicatedSDKURL != "" {
 			r.Post("/support/bundle", supportHandler.GenerateBundle)

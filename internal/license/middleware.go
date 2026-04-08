@@ -2,7 +2,6 @@ package license
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"sync"
 	"time"
@@ -28,11 +27,7 @@ func StatusMiddleware(client *Client) func(http.Handler) http.Handler {
 		for {
 			s := Status{}
 
-			info, err := client.GetLicenseInfo()
-			if err != nil {
-				log.Printf("WARN: license check failed: %v", err)
-			}
-			_ = info
+			s.Expired = client.IsExpired()
 
 			if update, err := client.CheckForUpdates(); err == nil && update != nil {
 				s.UpdateAvailable = true

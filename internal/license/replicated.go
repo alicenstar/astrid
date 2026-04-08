@@ -76,3 +76,19 @@ func (c *Client) IsFeatureEnabled(fieldName string) bool {
 	b, ok := val.(bool)
 	return ok && b
 }
+
+func (c *Client) IsExpired() bool {
+	val, err := c.GetFieldValue("expires_at")
+	if err != nil || val == nil {
+		return false
+	}
+	s, ok := val.(string)
+	if !ok || s == "" {
+		return false
+	}
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return false
+	}
+	return time.Now().After(t)
+}

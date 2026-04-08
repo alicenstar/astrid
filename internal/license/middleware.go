@@ -17,7 +17,7 @@ type Status struct {
 	UpdateVersion   string
 }
 
-func StatusMiddleware(client *Client) func(http.Handler) http.Handler {
+func StatusMiddleware(client *Client, appVersion string) func(http.Handler) http.Handler {
 	var (
 		mu     sync.RWMutex
 		status Status
@@ -31,7 +31,7 @@ func StatusMiddleware(client *Client) func(http.Handler) http.Handler {
 
 			s.Expired = client.IsExpired()
 
-			if update, err := client.CheckForUpdates(); err == nil && update != nil {
+			if update, err := client.CheckForUpdates(appVersion); err == nil && update != nil {
 				s.UpdateAvailable = true
 				s.UpdateVersion = update.VersionLabel
 			}

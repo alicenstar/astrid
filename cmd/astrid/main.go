@@ -93,7 +93,7 @@ func main() {
 	r.Group(func(r chi.Router) {
 		r.Use(authpkg.NewAuthMiddleware(rdb))
 		if licenseClient != nil {
-			r.Use(license.StatusMiddleware(licenseClient))
+			r.Use(license.StatusMiddleware(licenseClient, cfg.AppVersion))
 		}
 
 		dashboardHandler := handlers.NewDashboardHandler(db, rdb, tmpl, licenseChecker)

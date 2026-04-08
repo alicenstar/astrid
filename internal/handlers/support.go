@@ -12,16 +12,18 @@ import (
 )
 
 type SupportHandler struct {
-	sdkURL string
-	tmpl   *Templates
-	client *http.Client
+	sdkURL     string
+	appVersion string
+	tmpl       *Templates
+	client     *http.Client
 }
 
-func NewSupportHandler(sdkURL string, tmpl *Templates) *SupportHandler {
+func NewSupportHandler(sdkURL, appVersion string, tmpl *Templates) *SupportHandler {
 	return &SupportHandler{
-		sdkURL: sdkURL,
-		tmpl:   tmpl,
-		client: &http.Client{Timeout: 5 * time.Minute},
+		sdkURL:     sdkURL,
+		appVersion: appVersion,
+		tmpl:       tmpl,
+		client:     &http.Client{Timeout: 5 * time.Minute},
 	}
 }
 
@@ -30,6 +32,7 @@ func (h *SupportHandler) Page(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{
 		"Title":           "Support",
 		"ActiveNav":       "support",
+		"AppVersion":      h.appVersion,
 		"LicenseExpired":  ls.Expired,
 		"UpdateAvailable": ls.UpdateAvailable,
 		"UpdateVersion":   ls.UpdateVersion,

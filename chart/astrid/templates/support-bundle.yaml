@@ -1,0 +1,170 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "astrid.fullname" . }}-support-bundle
+  labels:
+    troubleshoot.sh/kind: support-bundle
+    {{- include "astrid.labels" . | nindent 4 }}
+stringData:
+  support-bundle-spec: |
+    apiVersion: troubleshoot.sh/v1beta2
+    kind: SupportBundle
+    metadata:
+      name: {{ include "astrid.fullname" . }}-support-bundle
+    spec:
+      collectors:
+        - logs:
+            name: app/astrid
+            selector:
+              - app.kubernetes.io/name=astrid
+            namespace: {{ .Release.Namespace }}
+            limits:
+              maxLines: 5000
+
+        - logs:
+            name: stateful/postgresql
+            selector:
+              - app.kubernetes.io/name=postgresql
+            namespace: {{ .Release.Namespace }}
+            limits:
+              maxLines: 5000
+
+        - logs:
+            name: stateful/redis
+            selector:
+              - app.kubernetes.io/name=redis
+            namespace: {{ .Release.Namespace }}
+            limits:
+              maxLines: 3000
+
+        - logs:
+            name: app/replicated-sdk
+            selector:
+              - app.kubernetes.io/name=replicated
+            namespace: {{ .Release.Namespace }}
+            limits:
+              maxLines: 2000
+
+        - http:
+            collectorName: health-check
+            get:
+              url: http://{{ include "astrid.fullname" . }}:{{ .Values.service.port }}/healthz
+              timeout: 10s
+
+      analyzers:
+        - textAnalyze:
+            checkName: "Astrid Health Endpoint"
+            fileName: health-check.json
+            regex: '"status"\s*:\s*"ok"'
+            outcomes:
+              - pass:
+                  when: "true"
+                  message: "Astrid health endpoint returned healthy status."
+              - fail:
+                  when: "false"
+                  message: |
+                    Astrid health endpoint did NOT return status "ok".
+                    Check app/astrid/ logs for errors.
+                    Common causes: database connection failure, Redis unreachable.
+
+        - deploymentStatus:
+            name: {{ include "astrid.fullname" . }}
+            namespace: {{ .Release.Namespace }}
+            outcomes:
+              - fail:
+                  when: "absent"
+                  message: "The Astrid deployment is missing."
+              - fail:
+                  when: "< 1"
+                  message: |
+                    The Astrid deployment has 0 ready replicas.
+                    The web application is DOWN. Check app/astrid/ logs.
+              - pass:
+                  message: "Astrid deployment is running."
+
+        - statefulsetStatus:
+            name: {{ include "astrid.fullname" . }}-postgresql
+            namespace: {{ .Release.Namespace }}
+            outcomes:
+              - fail:
+                  when: "absent"
+                  message: "PostgreSQL StatefulSet is missing."
+              - fail:
+                  when: "< 1"
+                  message: |
+                    PostgreSQL has 0 ready replicas. The database is DOWN.
+                    All data persistence features will fail.
+                    Check stateful/postgresql/ logs.
+              - pass:
+                  message: "PostgreSQL StatefulSet is running."
+
+        - deploymentStatus:
+            name: {{ .Release.Name }}-replicated
+            namespace: {{ .Release.Namespace }}
+            outcomes:
+              - fail:
+                  when: "absent"
+                  message: "Replicated SDK deployment is missing."
+              - fail:
+                  when: "< 1"
+                  message: |
+                    Replicated SDK has 0 ready replicas.
+                    License checks, metrics, and update notifications will not function.
+                    Check app/replicated-sdk/ logs.
+              - pass:
+                  message: "Replicated SDK deployment is running."
+
+        - textAnalyze:
+            checkName: "Database Connection Failure"
+            fileName: app/astrid/*.log
+            regex: "Failed to connect to postgres|pq: connection refused|pq: the database system is starting up"
+            outcomes:
+              - fail:
+                  when: "true"
+                  message: |
+                    PostgreSQL connection errors found in app logs.
+                    Remediation: Check PostgreSQL is running (kubectl get pods -l app.kubernetes.io/name=postgresql).
+                    If using external DB, verify connection string and network access.
+              - pass:
+                  when: "false"
+                  message: "No PostgreSQL connection errors found."
+
+        - textAnalyze:
+            checkName: "Redis Connection Failure"
+            fileName: app/astrid/*.log
+            regex: "Failed to connect to redis|dial tcp.*:6379.*connection refused"
+            outcomes:
+              - fail:
+                  when: "true"
+                  message: |
+                    Redis connection errors found in app logs.
+                    Sessions and caching will not work. Users cannot log in.
+                    Remediation: Check Redis is running (kubectl get pods -l app.kubernetes.io/name=redis).
+              - pass:
+                  when: "false"
+                  message: "No Redis connection errors found."
+
+        - storageClass:
+            checkName: "Default Storage Class"
+            outcomes:
+              - fail:
+                  message: |
+                    No default storage class found.
+                    PostgreSQL requires persistent storage. Create a default StorageClass
+                    or specify one in values.yaml under postgresql.primary.storageClass.
+              - pass:
+                  message: "A default storage class is available."
+
+        - nodeResources:
+            checkName: "Node Readiness"
+            outcomes:
+              - fail:
+                  when: "count() == count(unhealthy)"
+                  message: "All nodes are NotReady. The cluster is unhealthy."
+              - fail:
+                  when: "count(unhealthy) > 0"
+                  message: |
+                    One or more nodes are NotReady.
+                    Run 'kubectl describe node <name>' to diagnose.
+              - pass:
+                  message: "All nodes are Ready."

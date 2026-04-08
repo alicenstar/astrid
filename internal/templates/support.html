@@ -1,0 +1,31 @@
+{{define "content"}}
+<h1>Support</h1>
+
+<div class="card">
+    <h2>Generate Support Bundle</h2>
+    <p style="color:var(--text-muted); margin-bottom:1rem;">
+        Collect diagnostic information about your Astrid instance, including logs, health status,
+        and system configuration. The bundle is uploaded to your vendor for analysis.
+    </p>
+    <button
+        hx-post="/support/bundle"
+        hx-target="#bundle-status"
+        hx-indicator="#bundle-spinner"
+        hx-swap="innerHTML"
+        class="btn btn-primary">
+        Generate Support Bundle
+    </button>
+    <span id="bundle-spinner" class="htmx-indicator" style="margin-left:8px;">Generating...</span>
+    <div id="bundle-status" style="margin-top:1rem;"></div>
+</div>
+
+<div class="card" style="margin-top:1rem;">
+    <h2>System Information</h2>
+    <table>
+        <tbody>
+            <tr><td style="color:var(--text-muted);">Application</td><td>Astrid</td></tr>
+            <tr><td style="color:var(--text-muted);">Health Endpoint</td><td><a href="/healthz">/healthz</a></td></tr>
+        </tbody>
+    </table>
+</div>
+{{end}}

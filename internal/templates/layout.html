@@ -22,6 +22,7 @@
                 <a href="/log" {{if eq .ActiveNav "log"}}class="active" aria-current="page"{{end}}>Meal Log</a>
                 <a href="/summary" {{if eq .ActiveNav "summary"}}class="active" aria-current="page"{{end}}>Summary</a>
                 <a href="/workouts" {{if eq .ActiveNav "workouts"}}class="active" aria-current="page"{{end}}>Workouts</a>
+                <a href="/support" {{if eq .ActiveNav "support"}}class="active" aria-current="page"{{end}}>Support</a>
             </div>
             {{end}}
             <button class="theme-toggle" aria-label="Toggle dark and light mode" onclick="let t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;localStorage.setItem('theme',t);this.textContent=t==='dark'?'\u2600\uFE0F':'\uD83C\uDF19'" id="theme-btn"></button>

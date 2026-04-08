@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "astrid.fullname" . }}-preflight
+  labels:
+    troubleshoot.sh/kind: preflight
+    {{- include "astrid.labels" . | nindent 4 }}
+stringData:
+  preflight.yaml: |
+    apiVersion: troubleshoot.sh/v1beta2
+    kind: Preflight
+    metadata:
+      name: {{ include "astrid.fullname" . }}-preflight
+    spec:
+      collectors:
+        {{- if not .Values.postgresql.enabled }}
+        - http:
+            collectorName: external-postgres
+            get:
+              url: http://{{ .Values.externalDatabase.host }}:{{ .Values.externalDatabase.port }}
+              timeout: 5s
+              insecureSkipVerify: true
+        {{- end }}
+
+        - http:
+            collectorName: google-oauth-endpoint
+            get:
+              url: https://accounts.google.com/.well-known/openid-configuration
+              timeout: 5s
+
+      analyzers:
+        {{- if not .Values.postgresql.enabled }}
+        - textAnalyze:
+            checkName: "External PostgreSQL Connectivity"
+            fileName: external-postgres.json
+            regex: "."
+            outcomes:
+              - pass:
+                  when: "true"
+                  message: "External PostgreSQL at {{ .Values.externalDatabase.host }}:{{ .Values.externalDatabase.port }} is reachable."
+              - fail:
+                  when: "false"
+                  message: |
+                    Cannot reach external PostgreSQL at {{ .Values.externalDatabase.host }}:{{ .Values.externalDatabase.port }}.
+                    Verify the host is correct, the port is open, and firewalls allow traffic from this cluster.
+        {{- end }}
+
+        - textAnalyze:
+            checkName: "Google OAuth Endpoint Reachable"
+            fileName: google-oauth-endpoint.json
+            regex: '"issuer"'
+            outcomes:
+              - pass:
+                  when: "true"
+                  message: "Google OAuth endpoint (accounts.google.com) is reachable."
+              - fail:
+                  when: "false"
+                  message: |
+                    Cannot reach https://accounts.google.com. If Google OAuth is required,
+                    ensure the cluster has outbound internet access to accounts.google.com:443.
+
+        - nodeResources:
+            checkName: "Cluster CPU Resources"
+            outcomes:
+              - fail:
+                  when: "sum(cpuCapacity) < 2"
+                  message: |
+                    The cluster has less than 2 CPU cores total.
+                    Astrid requires at least 2 CPU cores across all nodes.
+              - pass:
+                  message: "Cluster has sufficient CPU resources."
+
+        - nodeResources:
+            checkName: "Cluster Memory Resources"
+            outcomes:
+              - fail:
+                  when: "sum(memoryCapacity) < 4Gi"
+                  message: |
+                    The cluster has less than 4Gi of memory total.
+                    Astrid requires at least 4Gi of memory across all nodes.
+              - pass:
+                  message: "Cluster has sufficient memory resources."
+
+        - clusterVersion:
+            outcomes:
+              - fail:
+                  when: "< 1.27.0"
+                  message: |
+                    Kubernetes version is below the minimum supported version 1.27.0.
+                    Please upgrade your cluster. See: https://kubernetes.io/releases/
+                  uri: https://kubernetes.io/releases/
+              - pass:
+                  message: "Kubernetes version meets the minimum requirement (>= 1.27.0)."
+
+        - distribution:
+            checkName: "Kubernetes Distribution"
+            outcomes:
+              - fail:
+                  when: "== docker-desktop"
+                  message: |
+                    Docker Desktop is not a supported distribution for Astrid.
+                    Supported: k3s, EKS, GKE, AKS, OpenShift.
+              - fail:
+                  when: "== microk8s"
+                  message: |
+                    MicroK8s is not a supported distribution for Astrid.
+                    Supported: k3s, EKS, GKE, AKS, OpenShift.
+              - pass:
+                  message: "Kubernetes distribution is supported."

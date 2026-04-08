@@ -160,6 +160,12 @@ func buildRouter(db *sql.DB, tmpl *handlers.Templates) http.Handler {
 
 		dashboardHandler := handlers.NewDashboardHandler(db, nil, tmpl, nil)
 		r.Get("/", dashboardHandler.Show)
+
+		summaryHandler := handlers.NewSummaryHandler(db, nil, tmpl)
+		r.Get("/summary", summaryHandler.Show)
+
+		supportHandler := handlers.NewSupportHandler("", tmpl)
+		r.Get("/support", supportHandler.Page)
 	})
 
 	return r
@@ -607,6 +613,82 @@ func TestDashboardShowsHealthStub(t *testing.T) {
 	body := w.Body.String()
 	if !strings.Contains(body, "Coming Soon") {
 		t.Fatal("dashboard should show health data 'Coming Soon' stub")
+	}
+}
+
+func TestSupportRoute(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+	r := buildRouter(handlerDB, handlerTmpl)
+
+	req := httptest.NewRequest(http.MethodGet, "/support", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d; body: %s", w.Code, w.Body.String())
+	}
+
+	body := w.Body.String()
+	if !strings.Contains(body, "Generate Support Bundle") {
+		t.Fatal("support page should contain 'Generate Support Bundle' button")
+	}
+}
+
+func TestSummaryRoute(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+	r := buildRouter(handlerDB, handlerTmpl)
+
+	req := httptest.NewRequest(http.MethodGet, "/summary", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d; body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestWorkoutsRoute(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+	r := buildRouter(handlerDB, handlerTmpl)
+
+	req := httptest.NewRequest(http.MethodGet, "/workouts", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d; body: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestAllPagesReturn200(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+	r := buildRouter(handlerDB, handlerTmpl)
+
+	pages := []struct {
+		name string
+		path string
+		code int
+	}{
+		{"dashboard", "/", http.StatusOK},
+		{"login", "/login", http.StatusOK},
+		{"signup", "/signup", http.StatusOK},
+		{"plans", "/plans", http.StatusOK},
+		{"workouts", "/workouts", http.StatusOK},
+		{"summary", "/summary", http.StatusOK},
+		{"support", "/support", http.StatusOK},
+		{"healthz", "/healthz", http.StatusOK},
+	}
+
+	for _, p := range pages {
+		t.Run(p.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, p.path, nil)
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, req)
+
+			if w.Code != p.code {
+				t.Fatalf("%s: expected %d, got %d; body: %.200s", p.name, p.code, w.Code, w.Body.String())
+			}
+		})
 	}
 }
 

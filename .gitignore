@@ -3,3 +3,4 @@ tmp/
 .DS_Store
 docs/superpowers/plans/
 chart/*/charts/*.tgz
+.worktrees/

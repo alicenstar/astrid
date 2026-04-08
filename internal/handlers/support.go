@@ -6,6 +6,9 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"time"
 
 	"github.com/alicenstar/astrid/internal/license"
@@ -46,19 +49,61 @@ func (h *SupportHandler) GenerateBundle(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	log.Println("Triggering support bundle generation via Replicated SDK...")
+	log.Println("Generating support bundle...")
 
-	req, err := http.NewRequest("POST", h.sdkURL+"/api/v1/app/supportbundle/generate", nil)
+	outDir, err := os.MkdirTemp("", "support-bundle-*")
 	if err != nil {
-		http.Error(w, "Failed to create request", http.StatusInternalServerError)
+		log.Printf("ERROR: failed to create temp dir: %v", err)
+		http.Error(w, "Failed to create temp directory", http.StatusInternalServerError)
 		return
 	}
-	req.Header.Set("Content-Type", "application/json")
+	defer os.RemoveAll(outDir)
+
+	outPath := filepath.Join(outDir, "bundle")
+	cmd := exec.CommandContext(r.Context(), "support-bundle",
+		"--load-cluster-specs",
+		"--interactive=false",
+		"-o", outPath,
+	)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		log.Printf("ERROR: support bundle generation failed: %v", err)
+		http.Error(w, "Failed to generate support bundle", http.StatusInternalServerError)
+		return
+	}
+
+	bundlePath := outPath + ".tar.gz"
+	f, err := os.Open(bundlePath)
+	if err != nil {
+		log.Printf("ERROR: failed to open bundle at %s: %v", bundlePath, err)
+		http.Error(w, "Bundle generated but file not found", http.StatusInternalServerError)
+		return
+	}
+	defer f.Close()
+
+	stat, err := f.Stat()
+	if err != nil {
+		log.Printf("ERROR: failed to stat bundle: %v", err)
+		http.Error(w, "Bundle generated but could not be read", http.StatusInternalServerError)
+		return
+	}
+
+	uploadURL := h.sdkURL + "/api/v1/supportbundle"
+	req, err := http.NewRequest("POST", uploadURL, f)
+	if err != nil {
+		log.Printf("ERROR: failed to create upload request: %v", err)
+		http.Error(w, "Failed to prepare upload", http.StatusInternalServerError)
+		return
+	}
+	req.Header.Set("Content-Type", "application/gzip")
+	req.ContentLength = stat.Size()
 
 	resp, err := h.client.Do(req)
 	if err != nil {
-		log.Printf("ERROR: support bundle generation failed: %v", err)
-		http.Error(w, "Failed to generate support bundle", http.StatusInternalServerError)
+		log.Printf("ERROR: failed to upload bundle to SDK: %v", err)
+		http.Error(w, "Bundle generated but upload failed", http.StatusInternalServerError)
 		return
 	}
 	defer resp.Body.Close()
@@ -66,11 +111,12 @@ func (h *SupportHandler) GenerateBundle(w http.ResponseWriter, r *http.Request) 
 	body, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode >= 300 {
-		log.Printf("ERROR: SDK returned %d: %s", resp.StatusCode, string(body))
-		http.Error(w, fmt.Sprintf("SDK error: %d", resp.StatusCode), http.StatusBadGateway)
+		log.Printf("ERROR: SDK upload returned %d: %s", resp.StatusCode, string(body))
+		http.Error(w, fmt.Sprintf("Upload failed: %d", resp.StatusCode), http.StatusBadGateway)
 		return
 	}
 
+	log.Println("Support bundle generated and uploaded successfully")
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":  "ok",

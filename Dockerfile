@@ -11,7 +11,10 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /astrid ./cmd/astrid/
 
 FROM alpine:3.20
 
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates \
+    && wget -qO- https://github.com/replicatedhq/troubleshoot/releases/latest/download/support-bundle_linux_amd64.tar.gz \
+       | tar xzf - -C /usr/local/bin/ support-bundle \
+    && chmod +x /usr/local/bin/support-bundle
 
 COPY --from=builder /astrid /usr/local/bin/astrid
 COPY migrations/ /app/migrations/

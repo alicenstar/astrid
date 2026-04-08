@@ -57,7 +57,7 @@ stringData:
       analyzers:
         - textAnalyze:
             checkName: "Astrid Health Endpoint"
-            fileName: health-check/*/*/astrid-healthz.json
+            fileName: health-check/*/*/astrid-healthz-stdout.txt
             regex: '"status"\s*:\s*"ok"'
             outcomes:
               - pass:

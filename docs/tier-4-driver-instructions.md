@@ -6,8 +6,8 @@ Step-by-step instructions for all manual tasks. Run commands from your local mac
 
 Make sure you have:
 - `replicated` CLI installed and authenticated
-- SSH key pair for CMX VMs
-- A test customer in Vendor Portal with **Embedded Cluster Enabled** and **Airgap Download Enabled**
+- A test customer in Vendor Portal with the **Embedded Cluster Enabled** entitlement turned on
+- For air-gap testing (rubric 4.3): customer also needs **Airgap Download Enabled**
 
 ```bash
 # Verify CLI works
@@ -15,41 +15,39 @@ export REPLICATED_APP=astrid
 replicated app ls
 ```
 
----
+## How Embedded Cluster Gets Enabled
 
-## Phase 0: Enable Embedded Cluster on Your Channel
+There is **no channel-level toggle** to enable EC. It works automatically:
 
-**This is required before anything else.** By default, Helm-chart-only apps have `isHelmOnly: true` on their channels, which blocks EC installs.
+1. You include an `embedded-cluster-config.yaml` manifest in your release (we already created this)
+2. You include a HelmChart v2 CR (`helmchart.yaml`) and an Application CR (`replicated-app.yaml`)
+3. When you promote that release to a channel, EC install becomes available for customers on that channel
 
-### Step 0.1: Get your app ID and channel ID
+That's it. The presence of the Embedded Cluster Config manifest in the release is what makes EC available.
 
-```bash
-replicated app ls --output json
-replicated channel ls --output json
-```
+## Phase 0: Pre-Flight Setup
 
-Note the `id` fields for your app and the `Unstable` channel.
+### Step 0.1: Create the `google_oauth_enabled` license field (needed for rubric 4.7)
 
-### Step 0.2: Disable Helm-only mode
+1. Go to Vendor Portal > **License Fields**
+2. Click **Create License Field**
+3. Add:
+   - **Field name**: `google_oauth_enabled`
+   - **Title**: Google OAuth Enabled
+   - **Type**: Boolean
+   - **Default**: `false`
 
-```bash
-replicated api put \
-  "/v3/app/<APP_ID>/channel/<CHANNEL_ID>" \
-  --body '{"name":"Unstable","isHelmOnly":false}'
-```
+### Step 0.2: Verify your test customer's license
 
-Replace `<APP_ID>` and `<CHANNEL_ID>` with the values from step 0.1.
+1. Go to **Customers** > your test customer
+2. Confirm **Embedded Cluster Enabled** is checked
+3. Confirm **Airgap Download Enabled** is checked (for Phase 3)
+4. Confirm `google_oauth_enabled` is set to `false` (for Phase 5)
+5. Download the license file (`.yaml`) — you'll need it later
 
-### Step 0.3: Enable automatic air-gap builds (needed for rubric 4.3 later)
+### Step 0.3: Enable automatic air-gap builds on the Unstable channel
 
-In Vendor Portal: go to **Channels** > **Unstable** > gear icon > enable **"Automatic Air Gap Builds"**.
-
-Or via API:
-```bash
-replicated api put \
-  "/v3/app/<APP_ID>/channel/<CHANNEL_ID>" \
-  --body '{"name":"Unstable","isHelmOnly":false,"buildAirgapAutomatically":true}'
-```
+In Vendor Portal: go to **Channels** > **Unstable** > gear icon > enable **"Automatic Air Gap Builds"**. This ensures air-gap bundles are built when you promote releases (needed for rubric 4.3).
 
 ---
 
@@ -67,7 +65,7 @@ git push -u origin feat/tier-4
 replicated release create --promote Unstable --version "ec-test-1"
 ```
 
-The `.replicated` file tells the CLI where to find charts and manifests. No `--yaml-dir` needed.
+The `.replicated` file tells the CLI where to find charts and manifests (including the EC config). No `--yaml-dir` needed.
 
 ### Step 1.2: Verify the release
 
@@ -75,14 +73,20 @@ The `.replicated` file tells the CLI where to find charts and manifests. No `--y
 replicated release ls
 ```
 
-You should see your release with `Unstable` in the `ACTIVE_CHANNELS` column. Also check in the Vendor Portal under **Releases** — the release should show an Embedded Cluster indicator.
+You should see your release with `Unstable` in the `ACTIVE_CHANNELS` column. Also check in the Vendor Portal under **Releases** — the release should show that it contains Embedded Cluster configuration.
 
-### Step 1.3: Provision a CMX VM
+### Step 1.3: Provision a CMX VM for EC
+
+EC uses its own distribution in CMX. The `--license-id` flag is **required** for EC:
 
 ```bash
-replicated vm create \
-  --distribution ubuntu \
-  --version 22.04 \
+# Get your customer's license ID first
+replicated customer ls
+
+# Create the EC cluster (note: distribution is "EC", not "ubuntu")
+replicated cluster create \
+  --distribution EC \
+  --license-id <LICENSE_ID> \
   --instance-type r1.medium \
   --disk 100 \
   --ttl 4h \
@@ -92,18 +96,18 @@ replicated vm create \
 
 Wait for it to be ready:
 ```bash
-replicated vm ls
+replicated cluster ls
 ```
 
-Note the VM ID and IP address.
-
-### Step 1.4: SSH into the VM
+### Step 1.4: Access the VM
 
 ```bash
-ssh <VM_IP>
-```
+# Option A: Use the cluster shell
+replicated cluster shell <CLUSTER_ID>
 
-The SSH user depends on the distribution (usually `ubuntu` for Ubuntu VMs, but CMX may use a different default — check the `replicated vm ls` output for connection info).
+# Option B: SSH directly
+ssh replicatedvm@<CLUSTER_ID>.replicatedvm.com
+```
 
 ### Step 1.5: Get install commands from Vendor Portal
 
@@ -119,7 +123,7 @@ The SSH user depends on the distribution (usually `ubuntu` for Ubuntu VMs, but C
 Paste the curl command from the portal, then extract:
 
 ```bash
-# Paste the curl command from the portal, something like:
+# Paste the curl command from the portal — it will look something like:
 curl -f https://replicated.app/embedded/astrid/unstable -H "Authorization: <license-id>" -o astrid-unstable.tgz
 
 # Extract
@@ -147,7 +151,7 @@ Visit the Admin Console to configure your application: http://<VM-IP>:30000
 
 1. Open `http://<VM-IP>:30000` in your browser
 2. Log in with the password you set
-3. **Upload license** — download it from Vendor Portal (Customers > your customer > Download license), then upload the `.yaml` file
+3. **Upload license** — upload the `.yaml` license file you downloaded in Phase 0
 4. **Config screen** — you'll see the config items we created (Database Type, Redis Type, Features). For a basic test:
    - Leave Database Type as **Embedded PostgreSQL**
    - Leave Redis Type as **Embedded Redis**
@@ -256,9 +260,9 @@ If you enabled automatic air-gap builds in Phase 0, the bundle should be ready. 
 ### Step 3.2: Provision a CMX VM (with internet initially)
 
 ```bash
-replicated vm create \
-  --distribution ubuntu \
-  --version 22.04 \
+replicated cluster create \
+  --distribution EC \
+  --license-id <LICENSE_ID> \
   --instance-type r1.medium \
   --disk 100 \
   --ttl 4h \
@@ -272,7 +276,7 @@ replicated vm create \
 replicated network ls
 ```
 
-Note the `NETWORK_ID` associated with your new VM.
+Note the `NETWORK_ID` associated with your new VM's network.
 
 ### Step 3.4: Download the air-gap bundle to the VM
 
@@ -281,41 +285,42 @@ While the VM still has internet access:
 1. Go to Vendor Portal > **Customers** > select your test customer
 2. Click **Install instructions**
 3. Choose **Embedded Cluster**
-4. Select **"Install in an air gap environment"**
+4. Select **"Install in an air gap environment"** (or similar air-gap option)
 5. Select the version
 6. Copy the download command
 
-SSH into the VM and run the download command:
+Access the VM and run the download command:
 ```bash
-ssh <VM_IP>
+replicated cluster shell <CLUSTER_ID>
 
 # Paste the curl command from the portal
 curl -f <air-gap-download-url> -o astrid-airgap.tgz
 ```
 
-### Step 3.5: Switch the VM to air-gap mode
+### Step 3.5: Switch the network to air-gap mode
 
 Back on your local machine:
 ```bash
 replicated network update <NETWORK_ID> --policy airgap
 ```
 
-This cuts off all outbound internet access. SSH still works through CMX.
+This cuts off all outbound internet access. SSH/shell access still works through CMX.
 
 ### Step 3.6: Extract and install on the air-gapped VM
 
-SSH back into the VM:
+Access the VM again:
 ```bash
-ssh <VM_IP>
+replicated cluster shell <CLUSTER_ID>
 
 # Extract
 tar xzf astrid-airgap.tgz
 
-# Run the air-gap installer (note the --airgap flag pointing to the .airgap file)
+# Run the air-gap installer
+# The --airgap flag points to the .airgap bundle file
 sudo ./astrid install --license license.yaml --airgap astrid.airgap
 ```
 
-The `.airgap` file name may differ — look at what was extracted. It contains all container images bundled in.
+The `.airgap` file name may differ — check what was extracted with `ls`. It contains all container images bundled in.
 
 The install process is the same as the online install (password prompt, preflight checks, admin console), except all images are loaded from the local bundle instead of pulled from the internet.
 
@@ -341,23 +346,15 @@ During any of the above installs, when you first access the admin console and se
 
 ## Phase 5: License Entitlement Gates Config (Rubric 4.7)
 
-### Step 5.1: Create the license field in Vendor Portal
+### Step 5.1: Test with entitlement disabled
 
-1. Go to Vendor Portal > **License Fields**
-2. Click **Create License Field**
-3. Add:
-   - **Field name**: `google_oauth_enabled`
-   - **Title**: Google OAuth Enabled
-   - **Type**: Boolean
-   - **Default**: `false`
-
-### Step 5.2: Test with entitlement disabled
+You already created the `google_oauth_enabled` license field in Phase 0.
 
 1. Ensure your test customer's license has `google_oauth_enabled = false`
 2. Install with EC (or use an existing install)
 3. On the config screen, the "Google OAuth Single Sign-On" toggle should **not appear** (it's hidden by `when: '{{repl LicenseFieldValue "google_oauth_enabled"}}'`)
 
-### Step 5.3: Enable the entitlement
+### Step 5.2: Enable the entitlement
 
 1. In Vendor Portal > **Customers** > your customer
 2. Edit the license, set `google_oauth_enabled = true`
@@ -373,13 +370,11 @@ During any of the above installs, when you first access the admin console and se
 
 When done testing:
 ```bash
-# List VMs
-replicated vm ls
+# List clusters
+replicated cluster ls
 
-# Delete VMs
-replicated vm rm <VM_ID>
-
-# Or delete all at once if only test VMs exist
+# Delete clusters
+replicated cluster rm <CLUSTER_ID>
 ```
 
 ---

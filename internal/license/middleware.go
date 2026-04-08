@@ -24,6 +24,8 @@ func StatusMiddleware(client *Client) func(http.Handler) http.Handler {
 	)
 
 	go func() {
+		// Short initial interval to handle SDK not being ready at startup.
+		interval := 10 * time.Second
 		for {
 			s := Status{}
 
@@ -37,7 +39,9 @@ func StatusMiddleware(client *Client) func(http.Handler) http.Handler {
 			mu.Lock()
 			status = s
 			mu.Unlock()
-			time.Sleep(5 * time.Minute)
+
+			time.Sleep(interval)
+			interval = 5 * time.Minute
 		}
 	}()
 

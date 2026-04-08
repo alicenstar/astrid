@@ -25,7 +25,7 @@ stringData:
         - http:
             collectorName: google-oauth-endpoint
             get:
-              url: https://accounts.google.com/.well-known/openid-configuration
+              url: {{ .Values.preflight.oauthEndpoint }}
               timeout: 5s
 
       analyzers:
@@ -33,7 +33,7 @@ stringData:
         - textAnalyze:
             checkName: "External PostgreSQL Connectivity"
             fileName: external-postgres.json
-            regex: "."
+            regex: '"response"'
             outcomes:
               - pass:
                   when: "true"
@@ -63,10 +63,10 @@ stringData:
             checkName: "Cluster CPU Resources"
             outcomes:
               - fail:
-                  when: "sum(cpuCapacity) < 2"
+                  when: "sum(cpuCapacity) < {{ .Values.preflight.minCPU }}"
                   message: |
-                    The cluster has less than 2 CPU cores total.
-                    Astrid requires at least 2 CPU cores across all nodes.
+                    The cluster has less than {{ .Values.preflight.minCPU }} CPU cores total.
+                    Astrid requires at least {{ .Values.preflight.minCPU }} CPU cores across all nodes.
               - pass:
                   message: "Cluster has sufficient CPU resources."
 
@@ -74,36 +74,33 @@ stringData:
             checkName: "Cluster Memory Resources"
             outcomes:
               - fail:
-                  when: "sum(memoryCapacity) < 4Gi"
+                  when: "sum(memoryCapacity) < {{ .Values.preflight.minMemory }}"
                   message: |
-                    The cluster has less than 4Gi of memory total.
-                    Astrid requires at least 4Gi of memory across all nodes.
+                    The cluster has less than {{ .Values.preflight.minMemory }} of memory total.
+                    Astrid requires at least {{ .Values.preflight.minMemory }} of memory across all nodes.
               - pass:
                   message: "Cluster has sufficient memory resources."
 
         - clusterVersion:
             outcomes:
               - fail:
-                  when: "< 1.27.0"
+                  when: "< {{ .Values.preflight.minK8sVersion }}"
                   message: |
-                    Kubernetes version is below the minimum supported version 1.27.0.
+                    Kubernetes version is below the minimum supported version {{ .Values.preflight.minK8sVersion }}.
                     Please upgrade your cluster. See: https://kubernetes.io/releases/
                   uri: https://kubernetes.io/releases/
               - pass:
-                  message: "Kubernetes version meets the minimum requirement (>= 1.27.0)."
+                  message: "Kubernetes version meets the minimum requirement (>= {{ .Values.preflight.minK8sVersion }})."
 
         - distribution:
             checkName: "Kubernetes Distribution"
             outcomes:
+              {{- range .Values.preflight.unsupportedDistributions }}
               - fail:
-                  when: "== docker-desktop"
+                  when: "== {{ . }}"
                   message: |
-                    Docker Desktop is not a supported distribution for Astrid.
+                    {{ . }} is not a supported distribution for Astrid.
                     Supported: k3s, EKS, GKE, AKS, OpenShift.
-              - fail:
-                  when: "== microk8s"
-                  message: |
-                    MicroK8s is not a supported distribution for Astrid.
-                    Supported: k3s, EKS, GKE, AKS, OpenShift.
+              {{- end }}
               - pass:
                   message: "Kubernetes distribution is supported."

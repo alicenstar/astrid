@@ -4,3 +4,4 @@ tmp/
 docs/superpowers/plans/
 chart/*/charts/*.tgz
 .worktrees/
+.beads/

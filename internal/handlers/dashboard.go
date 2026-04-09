@@ -86,9 +86,13 @@ func (h *DashboardHandler) Show(w http.ResponseWriter, r *http.Request) {
 
 	profile, _ := models.GetOrCreateProfile(h.db, uid)
 	var bmr, tdee float64
-	if latestMetric != nil {
-		bmr = profile.CalculateBMR(latestMetric.WeightKg)
-		tdee = profile.CalculateTDEE(latestMetric.WeightKg)
+	var weightUnit string
+	if profile != nil {
+		weightUnit = profile.WeightUnit
+		if latestMetric != nil {
+			bmr = profile.CalculateBMR(latestMetric.WeightKg)
+			tdee = profile.CalculateTDEE(latestMetric.WeightKg)
+		}
 	}
 
 	ls := license.GetStatus(r)
@@ -107,7 +111,7 @@ func (h *DashboardHandler) Show(w http.ResponseWriter, r *http.Request) {
 		"StreaksEnabled":   streaksEnabled,
 		"LatestMetric":    latestMetric,
 		"WeightTrend":     weightTrend,
-		"WeightUnit":      profile.WeightUnit,
+		"WeightUnit":      weightUnit,
 		"BMR":             bmr,
 		"TDEE":            tdee,
 		"LicenseExpired":  ls.Expired,

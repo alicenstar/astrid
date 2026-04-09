@@ -18,7 +18,7 @@ func SeedDemoData(db *sql.DB, userID uuid.UUID) error {
 	defer tx.Rollback()
 
 	// Clear existing data (cascades handle child records)
-	for _, table := range []string{"daily_logs", "workout_logs", "calorie_plans", "workout_splits"} {
+	for _, table := range []string{"body_metrics", "user_profiles", "daily_logs", "workout_logs", "calorie_plans", "workout_splits"} {
 		if _, err := tx.Exec(fmt.Sprintf(`DELETE FROM %s WHERE user_id = $1`, table), userID); err != nil {
 			return fmt.Errorf("seed cleanup %s: %w", table, err)
 		}
@@ -233,6 +233,31 @@ func SeedDemoData(db *sql.DB, userID uuid.UUID) error {
 		)
 		if err != nil {
 			return fmt.Errorf("seed workout log day-%d: %w", daysAgo, err)
+		}
+	}
+
+	// --- User profile ---
+	_, err = tx.Exec(
+		`INSERT INTO user_profiles (user_id, height_cm, birth_date, sex, activity_level, weight_unit)
+		 VALUES ($1, 175.0, '1990-05-15', 'male', 'moderate', 'lbs')
+		 ON CONFLICT (user_id) DO NOTHING`,
+		userID,
+	)
+	if err != nil {
+		return fmt.Errorf("seed user profile: %w", err)
+	}
+
+	// --- Body metrics: last 7 days with slight downward trend ---
+	for i := 6; i >= 0; i-- {
+		date := today.AddDate(0, 0, -i)
+		weight := 82.0 - float64(i)*0.15
+		_, err = tx.Exec(
+			`INSERT INTO body_metrics (user_id, date, weight_kg) VALUES ($1, $2, $3)
+			 ON CONFLICT (user_id, date) DO NOTHING`,
+			userID, date.Format("2006-01-02"), weight,
+		)
+		if err != nil {
+			return fmt.Errorf("seed body metric day-%d: %w", i, err)
 		}
 	}
 

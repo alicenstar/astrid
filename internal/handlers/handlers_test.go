@@ -164,6 +164,29 @@ func TestBodyMetricsCreate(t *testing.T) {
 		t.Errorf("expected 303 redirect, got %d", w.Code)
 	}
 }
+
+func TestDashboardShowsWeightCard(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+
+	user, _ := models.EnsureDefaultUser(handlerDB)
+	models.CreateBodyMetric(handlerDB, user.ID, time.Now(), 80.0, nil, nil, "")
+
+	r := buildRouter(handlerDB, handlerTmpl)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "Weight") {
+		t.Error("expected dashboard to contain weight card")
+	}
+	if strings.Contains(body, "Coming Soon") {
+		t.Error("expected health data stub to be replaced")
+	}
+}
 func injectUserID(uid uuid.UUID, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := auth.ContextWithUserID(r.Context(), uid)
@@ -677,7 +700,7 @@ func TestSignupValidation(t *testing.T) {
 	}
 }
 
-func TestDashboardShowsHealthStub(t *testing.T) {
+func TestDashboardShowsWeightSection(t *testing.T) {
 	cleanHandlerDB(t, handlerDB)
 	r := buildRouter(handlerDB, handlerTmpl)
 
@@ -686,8 +709,8 @@ func TestDashboardShowsHealthStub(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	body := w.Body.String()
-	if !strings.Contains(body, "Coming Soon") {
-		t.Fatal("dashboard should show health data 'Coming Soon' stub")
+	if !strings.Contains(body, "Weight") {
+		t.Fatal("dashboard should show weight section")
 	}
 }
 

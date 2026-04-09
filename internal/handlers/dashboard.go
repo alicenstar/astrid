@@ -67,6 +67,30 @@ func (h *DashboardHandler) Show(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Latest weight and trend
+	latestMetric, _ := models.GetLatestBodyMetric(h.db, uid)
+	var weightTrend string
+	if latestMetric != nil {
+		weekAgo, _ := models.GetWeightTrend(h.db, uid, 7)
+		if weekAgo != nil {
+			diff := latestMetric.WeightKg - *weekAgo
+			if diff > 0.1 {
+				weightTrend = "up"
+			} else if diff < -0.1 {
+				weightTrend = "down"
+			} else {
+				weightTrend = "stable"
+			}
+		}
+	}
+
+	profile, _ := models.GetOrCreateProfile(h.db, uid)
+	var bmr, tdee float64
+	if latestMetric != nil {
+		bmr = profile.CalculateBMR(latestMetric.WeightKg)
+		tdee = profile.CalculateTDEE(latestMetric.WeightKg)
+	}
+
 	ls := license.GetStatus(r)
 	data := map[string]any{
 		"Title":           "Dashboard",
@@ -80,7 +104,12 @@ func (h *DashboardHandler) Show(w http.ResponseWriter, r *http.Request) {
 		"WorkoutLog":      workoutLog,
 		"WorkoutDone":     workoutLog != nil && workoutLog.Completed,
 		"Streak":          streak,
-		"StreaksEnabled":  streaksEnabled,
+		"StreaksEnabled":   streaksEnabled,
+		"LatestMetric":    latestMetric,
+		"WeightTrend":     weightTrend,
+		"WeightUnit":      profile.WeightUnit,
+		"BMR":             bmr,
+		"TDEE":            tdee,
 		"LicenseExpired":  ls.Expired,
 		"UpdateAvailable": ls.UpdateAvailable,
 		"UpdateVersion":   ls.UpdateVersion,

@@ -1,0 +1,58 @@
+apiVersion: kots.io/v1beta2
+kind: HelmChart
+metadata:
+  name: astrid
+spec:
+  chart:
+    name: astrid
+    chartVersion: 0.1.0
+  releaseName: astrid
+  values:
+    postgresql:
+      enabled: repl{{ ConfigOptionEquals "database_type" "embedded_postgres" }}
+      auth:
+        password: repl{{ ConfigOption "embedded_db_password" }}
+
+    redis:
+      enabled: repl{{ ConfigOptionEquals "redis_type" "embedded_redis" }}
+
+    features:
+      streaksEnabled: repl{{ ConfigOptionEquals "workout_streaks_toggle" "1" }}
+
+  optionalValues:
+    # External PostgreSQL connection
+    - when: "repl{{ ConfigOptionEquals `database_type` `external_postgres` }}"
+      recursiveMerge: true
+      values:
+        externalDatabase:
+          host: "repl{{ ConfigOption `external_db_host` }}"
+          port: "repl{{ ConfigOption `external_db_port` }}"
+          user: "repl{{ ConfigOption `external_db_user` }}"
+          password: "repl{{ ConfigOption `external_db_password` }}"
+          database: "repl{{ ConfigOption `external_db_name` }}"
+
+    # External Redis connection
+    - when: "repl{{ ConfigOptionEquals `redis_type` `external_redis` }}"
+      recursiveMerge: true
+      values:
+        externalRedis:
+          host: "repl{{ ConfigOption `external_redis_host` }}"
+          port: "repl{{ ConfigOption `external_redis_port` }}"
+          password: "repl{{ ConfigOption `external_redis_password` }}"
+
+    # Google OAuth (gated by license entitlement)
+    - when: "repl{{ and (ConfigOptionEquals `google_oauth_toggle` `1`) (LicenseFieldValue `google_oauth_enabled`) }}"
+      recursiveMerge: true
+      values:
+        auth:
+          google:
+            clientID: "repl{{ ConfigOption `google_client_id` }}"
+            clientSecret: "repl{{ ConfigOption `google_client_secret` }}"
+            redirectURL: "repl{{ ConfigOption `google_redirect_url` }}"
+
+  # Builder section: static values for air-gap image discovery
+  builder:
+    postgresql:
+      enabled: true
+    redis:
+      enabled: true

@@ -7,7 +7,7 @@ metadata:
     {{- include "astrid.labels" . | nindent 4 }}
 stringData:
   preflight.yaml: |
-    apiVersion: troubleshoot.sh/v1beta2
+    apiVersion: troubleshoot.sh/v1beta3
     kind: Preflight
     metadata:
       name: {{ include "astrid.fullname" . }}-preflight
@@ -30,7 +30,13 @@ stringData:
 
       analyzers:
         {{- if not .Values.postgresql.enabled }}
-        - textAnalyze:
+        - docString: |
+            Title: External PostgreSQL Connectivity
+            Requirement:
+              - PostgreSQL must be reachable at {{ .Values.externalDatabase.host }}:{{ .Values.externalDatabase.port }}
+            Astrid requires a running PostgreSQL instance when not using the embedded database.
+            Verify the host, port, and firewall rules before installing.
+          textAnalyze:
             checkName: "External PostgreSQL Connectivity"
             fileName: external-postgres.json
             regex: '"response"'
@@ -45,7 +51,12 @@ stringData:
                     Verify the host is correct, the port is open, and firewalls allow traffic from this cluster.
         {{- end }}
 
-        - textAnalyze:
+        - docString: |
+            Title: Google OAuth Endpoint Reachable
+            Requirement:
+              - accounts.google.com must be reachable on port 443
+            Required if Google OAuth login is enabled. If not using Google OAuth, this warning can be ignored.
+          textAnalyze:
             checkName: "Google OAuth Endpoint Reachable"
             fileName: google-oauth-endpoint.json
             regex: '"issuer"'
@@ -59,7 +70,13 @@ stringData:
                     Cannot reach https://accounts.google.com. If Google OAuth is required,
                     ensure the cluster has outbound internet access to accounts.google.com:443.
 
-        - nodeResources:
+        - docString: |
+            Title: Cluster CPU Resources
+            Requirement:
+              - Minimum {{ .Values.preflight.minCPU }} CPU cores total across all nodes
+            Astrid and its components require sufficient CPU to schedule all workloads.
+            Insufficient CPU causes pods to remain in Pending state.
+          nodeResources:
             checkName: "Cluster CPU Resources"
             outcomes:
               - fail:
@@ -70,7 +87,13 @@ stringData:
               - pass:
                   message: "Cluster has sufficient CPU resources."
 
-        - nodeResources:
+        - docString: |
+            Title: Cluster Memory Resources
+            Requirement:
+              - Minimum {{ .Values.preflight.minMemory }} of RAM total across all nodes
+            Astrid, PostgreSQL, and Redis all require memory to operate reliably.
+            Insufficient memory causes OOMKill events and pod restarts.
+          nodeResources:
             checkName: "Cluster Memory Resources"
             outcomes:
               - fail:
@@ -81,7 +104,14 @@ stringData:
               - pass:
                   message: "Cluster has sufficient memory resources."
 
-        - clusterVersion:
+        - docString: |
+            Title: Kubernetes Version
+            Requirement:
+              - Minimum Kubernetes {{ .Values.preflight.minK8sVersion }}
+            Older Kubernetes versions lack APIs and security patches that Astrid depends on.
+            Links:
+              - https://kubernetes.io/releases/
+          clusterVersion:
             outcomes:
               - fail:
                   when: "< {{ .Values.preflight.minK8sVersion }}"
@@ -92,7 +122,13 @@ stringData:
               - pass:
                   message: "Kubernetes version meets the minimum requirement (>= {{ .Values.preflight.minK8sVersion }})."
 
-        - distribution:
+        - docString: |
+            Title: Kubernetes Distribution
+            Requirement:
+              - Must NOT be: {{ range .Values.preflight.unsupportedDistributions }}{{ . }} {{ end }}
+            Unsupported distributions have known incompatibilities with Astrid's networking and storage requirements.
+            Supported distributions: k3s, EKS, GKE, AKS, OpenShift.
+          distribution:
             checkName: "Kubernetes Distribution"
             outcomes:
               {{- range .Values.preflight.unsupportedDistributions }}

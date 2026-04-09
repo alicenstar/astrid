@@ -13,3 +13,5 @@ docs/superpowers/
 .dolt/
 *.db
 .beads-credential-key
+.beads/
+docs/tier-4-driver-instructions.md

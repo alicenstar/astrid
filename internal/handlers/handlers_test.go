@@ -261,7 +261,7 @@ func buildRouter(db *sql.DB, tmpl *handlers.Templates) http.Handler {
 		r.Post("/workouts/{id}/activate", workoutsHandler.Activate)
 		r.Post("/workouts/{id}/delete", workoutsHandler.Delete)
 
-		dashboardHandler := handlers.NewDashboardHandler(db, nil, tmpl, nil)
+		dashboardHandler := handlers.NewDashboardHandler(db, nil, tmpl, nil, true)
 		r.Get("/", dashboardHandler.Show)
 
 		summaryHandler := handlers.NewSummaryHandler(db, nil, tmpl)

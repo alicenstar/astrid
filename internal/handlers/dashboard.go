@@ -17,10 +17,11 @@ type DashboardHandler struct {
 	rdb            *redis.Client
 	tmpl           *Templates
 	licenseChecker LicenseChecker
+	streaksEnabled bool
 }
 
-func NewDashboardHandler(db *sql.DB, rdb *redis.Client, tmpl *Templates, lc LicenseChecker) *DashboardHandler {
-	return &DashboardHandler{db: db, rdb: rdb, tmpl: tmpl, licenseChecker: lc}
+func NewDashboardHandler(db *sql.DB, rdb *redis.Client, tmpl *Templates, lc LicenseChecker, streaksEnabled bool) *DashboardHandler {
+	return &DashboardHandler{db: db, rdb: rdb, tmpl: tmpl, licenseChecker: lc, streaksEnabled: streaksEnabled}
 }
 
 func (h *DashboardHandler) Show(w http.ResponseWriter, r *http.Request) {
@@ -56,9 +57,9 @@ func (h *DashboardHandler) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Streak — gated by license entitlement
+	// Streak — gated by config screen (EC) or SDK license check (Helm-only)
 	var streak int
-	streaksEnabled := h.licenseChecker == nil || h.licenseChecker.IsFeatureEnabled("workout_streaks_enabled")
+	streaksEnabled := h.streaksEnabled && (h.licenseChecker == nil || h.licenseChecker.IsFeatureEnabled("workout_streaks_enabled"))
 	if streaksEnabled {
 		streak, err = models.GetWorkoutStreak(h.db, h.rdb, uid)
 		if err != nil {

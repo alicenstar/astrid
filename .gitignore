@@ -4,3 +4,5 @@ tmp/
 docs/superpowers/plans/
 chart/*/charts/*.tgz
 .worktrees/
+.beads/
+docs/tier-4-driver-instructions.md

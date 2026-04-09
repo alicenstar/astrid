@@ -66,6 +66,13 @@ jobs:
       - name: Package Helm chart
         run: helm package chart/astrid -d .
 
+      - name: Prepare KOTS manifests
+        run: |
+          mkdir -p release-manifests
+          cp kots-config.yaml replicated-app.yaml embedded-cluster-config.yaml release-manifests/
+          sed "s/    chartVersion:.*/    chartVersion: ${{ steps.version.outputs.version }}/" helmchart.yaml \
+            > release-manifests/helmchart.yaml
+
       - name: Create release and promote to Unstable
         id: create-release
         uses: replicatedhq/replicated-actions/create-release@v1
@@ -73,6 +80,7 @@ jobs:
           app-slug: ${{ secrets.REPLICATED_APP }}
           api-token: ${{ secrets.REPLICATED_API_TOKEN }}
           chart: astrid-${{ steps.version.outputs.version }}.tgz
+          yaml-dir: release-manifests
           promote-channel: Unstable
           version: ${{ steps.version.outputs.version }}
 

@@ -1,0 +1,69 @@
+{{define "content"}}
+<h1>Profile</h1>
+
+<div class="card">
+    <h2>Your Information</h2>
+    <form method="POST" action="/profile">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+            <div class="form-group">
+                <label for="height_cm">Height (cm)</label>
+                <input type="number" id="height_cm" name="height_cm" step="0.1" min="0"
+                       value="{{if .Profile.HeightCm}}{{printf "%.1f" (index .Profile.HeightCm)}}{{end}}">
+            </div>
+            <div class="form-group">
+                <label for="birth_date">Birth Date</label>
+                <input type="date" id="birth_date" name="birth_date"
+                       value="{{if .Profile.BirthDate}}{{.Profile.BirthDate.Format "2006-01-02"}}{{end}}">
+            </div>
+            <div class="form-group">
+                <label for="sex">Sex</label>
+                <select id="sex" name="sex">
+                    <option value="">—</option>
+                    <option value="male" {{if and .Profile.Sex (eq (index .Profile.Sex) "male")}}selected{{end}}>Male</option>
+                    <option value="female" {{if and .Profile.Sex (eq (index .Profile.Sex) "female")}}selected{{end}}>Female</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="activity_level">Activity Level</label>
+                <select id="activity_level" name="activity_level">
+                    <option value="">—</option>
+                    <option value="sedentary" {{if and .Profile.ActivityLevel (eq (index .Profile.ActivityLevel) "sedentary")}}selected{{end}}>Sedentary</option>
+                    <option value="light" {{if and .Profile.ActivityLevel (eq (index .Profile.ActivityLevel) "light")}}selected{{end}}>Lightly Active</option>
+                    <option value="moderate" {{if and .Profile.ActivityLevel (eq (index .Profile.ActivityLevel) "moderate")}}selected{{end}}>Moderately Active</option>
+                    <option value="active" {{if and .Profile.ActivityLevel (eq (index .Profile.ActivityLevel) "active")}}selected{{end}}>Active</option>
+                    <option value="very_active" {{if and .Profile.ActivityLevel (eq (index .Profile.ActivityLevel) "very_active")}}selected{{end}}>Very Active</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="weight_unit">Preferred Weight Unit</label>
+                <select id="weight_unit" name="weight_unit">
+                    <option value="lbs" {{if eq .Profile.WeightUnit "lbs"}}selected{{end}}>Pounds (lbs)</option>
+                    <option value="kg" {{if eq .Profile.WeightUnit "kg"}}selected{{end}}>Kilograms (kg)</option>
+                </select>
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Save Profile</button>
+    </form>
+</div>
+
+{{if and (gt .BMR 0.0) .HasWeight}}
+<div class="card">
+    <h2>Estimated Energy Expenditure</h2>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+        <div>
+            <p style="color:var(--text-muted); font-size:0.85rem;">Basal Metabolic Rate (BMR)</p>
+            <p style="font-size:1.5rem; font-weight:700;">{{printf "%.0f" .BMR}} kcal/day</p>
+        </div>
+        <div>
+            <p style="color:var(--text-muted); font-size:0.85rem;">Total Daily Energy Expenditure (TDEE)</p>
+            <p style="font-size:1.5rem; font-weight:700;">{{printf "%.0f" .TDEE}} kcal/day</p>
+        </div>
+    </div>
+    <p style="color:var(--text-muted); font-size:0.8rem; margin-top:0.5rem;">Based on your latest weight and profile. Use this as a reference when setting calorie targets.</p>
+</div>
+{{else if not .HasWeight}}
+<div class="card">
+    <p style="color:var(--text-muted);">Log your weight in <a href="/body-metrics">Body Metrics</a> to see BMR and TDEE estimates.</p>
+</div>
+{{end}}
+{{end}}

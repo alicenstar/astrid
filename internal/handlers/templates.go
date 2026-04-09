@@ -112,7 +112,7 @@ func LoadTemplates(templatesDir string) (*Templates, error) {
 	}
 
 	layoutFile := filepath.Join(templatesDir, "layout.html")
-	pages := []string{"dashboard", "plans", "plan_edit", "log", "summary", "workouts", "workout_edit", "support", "error", "login", "signup"}
+	pages := []string{"dashboard", "plans", "plan_edit", "log", "summary", "workouts", "workout_edit", "support", "error", "login", "signup", "profile"}
 
 	t := &Templates{pages: make(map[string]*template.Template)}
 

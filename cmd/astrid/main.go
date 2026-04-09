@@ -131,6 +131,10 @@ func main() {
 		summaryHandler := handlers.NewSummaryHandler(db, rdb, tmpl)
 		r.Get("/summary", summaryHandler.Show)
 
+		profileHandler := handlers.NewProfileHandler(db, tmpl)
+		r.Get("/profile", profileHandler.Page)
+		r.Post("/profile", profileHandler.Update)
+
 		supportHandler := handlers.NewSupportHandler(cfg.ReplicatedSDKURL, cfg.AppVersion, tmpl)
 		r.Get("/support", supportHandler.Page)
 		if cfg.ReplicatedSDKURL != "" {

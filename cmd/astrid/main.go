@@ -138,6 +138,7 @@ func main() {
 		bodyMetricsHandler := handlers.NewBodyMetricsHandler(db, tmpl)
 		r.Get("/body-metrics", bodyMetricsHandler.List)
 		r.Post("/body-metrics", bodyMetricsHandler.Create)
+		r.Get("/body-metrics/history", bodyMetricsHandler.History)
 		r.Post("/body-metrics/{id}/delete", bodyMetricsHandler.Delete)
 
 		supportHandler := handlers.NewSupportHandler(cfg.ReplicatedSDKURL, cfg.AppVersion, tmpl)

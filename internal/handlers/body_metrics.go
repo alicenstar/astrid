@@ -102,6 +102,57 @@ func (h *BodyMetricsHandler) Create(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/body-metrics", http.StatusSeeOther)
 }
 
+func (h *BodyMetricsHandler) History(w http.ResponseWriter, r *http.Request) {
+	uid, _ := auth.UserIDFromContext(r.Context())
+
+	metrics, err := models.ListBodyMetrics(h.db, uid, 365)
+	if err != nil {
+		h.tmpl.RenderError(w, "Could not load body metrics", http.StatusInternalServerError)
+		return
+	}
+
+	profile, _ := models.GetOrCreateProfile(h.db, uid)
+
+	type chartPoint struct {
+		Date       string  `json:"date"`
+		Weight     float64 `json:"weight"`
+		BodyFatPct float64 `json:"bodyFatPct"`
+		MusclePct  float64 `json:"musclePct"`
+	}
+	var chartData []chartPoint
+	for i := len(metrics) - 1; i >= 0; i-- {
+		m := metrics[i]
+		wt := m.WeightKg
+		if profile.WeightUnit == "lbs" {
+			wt = m.WeightKg * 2.20462
+		}
+		point := chartPoint{
+			Date:   m.Date.Format("Jan 2"),
+			Weight: wt,
+		}
+		if m.BodyFatPct != nil {
+			point.BodyFatPct = *m.BodyFatPct
+		}
+		if m.MusclePct != nil {
+			point.MusclePct = *m.MusclePct
+		}
+		chartData = append(chartData, point)
+	}
+
+	ls := license.GetStatus(r)
+	data := map[string]any{
+		"Title":           "Weight History",
+		"ActiveNav":       "body_metrics",
+		"Metrics":         metrics,
+		"ChartData":       chartData,
+		"WeightUnit":      profile.WeightUnit,
+		"LicenseExpired":  ls.Expired,
+		"UpdateAvailable": ls.UpdateAvailable,
+		"UpdateVersion":   ls.UpdateVersion,
+	}
+	h.tmpl.Render(w, "body_metrics_history", withUserEmail(r, data))
+}
+
 func (h *BodyMetricsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	uid, _ := auth.UserIDFromContext(r.Context())
 	metricID, err := uuid.Parse(chi.URLParam(r, "id"))

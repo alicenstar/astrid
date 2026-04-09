@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -110,10 +111,14 @@ func LoadTemplates(templatesDir string) (*Templates, error) {
 			return "red"
 		},
 		"mul": func(a float64, b float64) float64 { return a * b },
+		"toJSON": func(v any) template.JS {
+			b, _ := json.Marshal(v)
+			return template.JS(b)
+		},
 	}
 
 	layoutFile := filepath.Join(templatesDir, "layout.html")
-	pages := []string{"dashboard", "plans", "plan_edit", "log", "summary", "workouts", "workout_edit", "support", "error", "login", "signup", "profile", "body_metrics"}
+	pages := []string{"dashboard", "plans", "plan_edit", "log", "summary", "workouts", "workout_edit", "support", "error", "login", "signup", "profile", "body_metrics", "body_metrics_history"}
 
 	t := &Templates{pages: make(map[string]*template.Template)}
 

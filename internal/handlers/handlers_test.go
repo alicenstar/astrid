@@ -165,6 +165,20 @@ func TestBodyMetricsCreate(t *testing.T) {
 	}
 }
 
+func TestBodyMetricsHistoryLoads(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+	r := buildRouter(handlerDB, handlerTmpl)
+	req := httptest.NewRequest(http.MethodGet, "/body-metrics/history", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "Weight History") {
+		t.Error("expected page to contain 'Weight History'")
+	}
+}
+
 func TestDashboardShowsWeightCard(t *testing.T) {
 	cleanHandlerDB(t, handlerDB)
 
@@ -263,6 +277,7 @@ func buildRouter(db *sql.DB, tmpl *handlers.Templates) http.Handler {
 		bodyMetricsHandler := handlers.NewBodyMetricsHandler(db, tmpl)
 		r.Get("/body-metrics", bodyMetricsHandler.List)
 		r.Post("/body-metrics", bodyMetricsHandler.Create)
+		r.Get("/body-metrics/history", bodyMetricsHandler.History)
 		r.Post("/body-metrics/{id}/delete", bodyMetricsHandler.Delete)
 	})
 

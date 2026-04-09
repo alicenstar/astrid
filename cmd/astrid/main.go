@@ -135,6 +135,11 @@ func main() {
 		r.Get("/profile", profileHandler.Page)
 		r.Post("/profile", profileHandler.Update)
 
+		bodyMetricsHandler := handlers.NewBodyMetricsHandler(db, tmpl)
+		r.Get("/body-metrics", bodyMetricsHandler.List)
+		r.Post("/body-metrics", bodyMetricsHandler.Create)
+		r.Post("/body-metrics/{id}/delete", bodyMetricsHandler.Delete)
+
 		supportHandler := handlers.NewSupportHandler(cfg.ReplicatedSDKURL, cfg.AppVersion, tmpl)
 		r.Get("/support", supportHandler.Page)
 		if cfg.ReplicatedSDKURL != "" {

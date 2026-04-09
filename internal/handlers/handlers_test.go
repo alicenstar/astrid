@@ -132,6 +132,38 @@ func TestProfileUpdate(t *testing.T) {
 		t.Errorf("expected 303 redirect, got %d", w.Code)
 	}
 }
+
+func TestBodyMetricsPageLoads(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+	r := buildRouter(handlerDB, handlerTmpl)
+	req := httptest.NewRequest(http.MethodGet, "/body-metrics", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "Body Metrics") {
+		t.Error("expected page to contain 'Body Metrics'")
+	}
+}
+
+func TestBodyMetricsCreate(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+	r := buildRouter(handlerDB, handlerTmpl)
+	form := url.Values{
+		"weight":       {"180.5"},
+		"body_fat_pct": {"15.0"},
+		"muscle_pct":   {"40.0"},
+		"notes":        {"morning weigh-in"},
+	}
+	req := httptest.NewRequest(http.MethodPost, "/body-metrics", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("expected 303 redirect, got %d", w.Code)
+	}
+}
 func injectUserID(uid uuid.UUID, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := auth.ContextWithUserID(r.Context(), uid)
@@ -204,6 +236,11 @@ func buildRouter(db *sql.DB, tmpl *handlers.Templates) http.Handler {
 		profileHandler := handlers.NewProfileHandler(db, tmpl)
 		r.Get("/profile", profileHandler.Page)
 		r.Post("/profile", profileHandler.Update)
+
+		bodyMetricsHandler := handlers.NewBodyMetricsHandler(db, tmpl)
+		r.Get("/body-metrics", bodyMetricsHandler.List)
+		r.Post("/body-metrics", bodyMetricsHandler.Create)
+		r.Post("/body-metrics/{id}/delete", bodyMetricsHandler.Delete)
 	})
 
 	return r
@@ -716,6 +753,7 @@ func TestAllPagesReturn200(t *testing.T) {
 		{"support", "/support", http.StatusOK},
 		{"healthz", "/healthz", http.StatusOK},
 		{"profile", "/profile", http.StatusOK},
+		{"body-metrics", "/body-metrics", http.StatusOK},
 	}
 
 	for _, p := range pages {

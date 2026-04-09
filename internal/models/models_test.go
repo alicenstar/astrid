@@ -845,3 +845,81 @@ func TestCalculateBMR(t *testing.T) {
 		t.Error("expected 0 BMR when fields are missing")
 	}
 }
+
+func TestCreateBodyMetric(t *testing.T) {
+	cleanDB(t, testDB)
+	userID := ensureUser(t, testDB)
+
+	metric, err := CreateBodyMetric(testDB, userID, time.Now(), 80.5, nil, nil, "")
+	if err != nil {
+		t.Fatalf("CreateBodyMetric: %v", err)
+	}
+	if metric.WeightKg != 80.5 {
+		t.Errorf("expected weight 80.5, got %f", metric.WeightKg)
+	}
+	if metric.BodyFatPct != nil {
+		t.Errorf("expected nil body_fat_pct, got %v", metric.BodyFatPct)
+	}
+}
+
+func TestListBodyMetrics(t *testing.T) {
+	cleanDB(t, testDB)
+	userID := ensureUser(t, testDB)
+
+	CreateBodyMetric(testDB, userID, time.Now().AddDate(0, 0, -2), 81.0, nil, nil, "")
+	CreateBodyMetric(testDB, userID, time.Now().AddDate(0, 0, -1), 80.5, nil, nil, "")
+	CreateBodyMetric(testDB, userID, time.Now(), 80.0, nil, nil, "")
+
+	metrics, err := ListBodyMetrics(testDB, userID, 10)
+	if err != nil {
+		t.Fatalf("ListBodyMetrics: %v", err)
+	}
+	if len(metrics) != 3 {
+		t.Fatalf("expected 3 metrics, got %d", len(metrics))
+	}
+	// Most recent first
+	if metrics[0].WeightKg != 80.0 {
+		t.Errorf("expected first metric weight 80.0, got %f", metrics[0].WeightKg)
+	}
+}
+
+func TestGetLatestBodyMetric(t *testing.T) {
+	cleanDB(t, testDB)
+	userID := ensureUser(t, testDB)
+
+	// No metrics yet
+	latest, err := GetLatestBodyMetric(testDB, userID)
+	if err != nil {
+		t.Fatalf("GetLatestBodyMetric: %v", err)
+	}
+	if latest != nil {
+		t.Error("expected nil when no metrics exist")
+	}
+
+	CreateBodyMetric(testDB, userID, time.Now().AddDate(0, 0, -1), 81.0, nil, nil, "")
+	CreateBodyMetric(testDB, userID, time.Now(), 80.0, nil, nil, "")
+
+	latest, err = GetLatestBodyMetric(testDB, userID)
+	if err != nil {
+		t.Fatalf("GetLatestBodyMetric: %v", err)
+	}
+	if latest.WeightKg != 80.0 {
+		t.Errorf("expected latest weight 80.0, got %f", latest.WeightKg)
+	}
+}
+
+func TestDeleteBodyMetric(t *testing.T) {
+	cleanDB(t, testDB)
+	userID := ensureUser(t, testDB)
+
+	metric, _ := CreateBodyMetric(testDB, userID, time.Now(), 80.0, nil, nil, "")
+	err := DeleteBodyMetric(testDB, metric.ID, userID)
+	if err != nil {
+		t.Fatalf("DeleteBodyMetric: %v", err)
+	}
+
+	metrics, _ := ListBodyMetrics(testDB, userID, 10)
+	if len(metrics) != 0 {
+		t.Errorf("expected 0 metrics after delete, got %d", len(metrics))
+	}
+}

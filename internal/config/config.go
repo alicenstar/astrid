@@ -14,6 +14,7 @@ type Config struct {
 	GoogleRedirectURL string
 	ReplicatedSDKURL  string
 	AppVersion        string
+	StreaksEnabled    bool
 }
 
 func Load() *Config {
@@ -26,6 +27,9 @@ func Load() *Config {
 		GoogleSecret:      os.Getenv("GOOGLE_CLIENT_SECRET"),
 		GoogleRedirectURL: os.Getenv("GOOGLE_REDIRECT_URL"),
 		ReplicatedSDKURL:  getEnv("REPLICATED_SDK_URL", ""),
+		// STREAKS_ENABLED is set by Helm from the EC config screen.
+		// Anything other than explicit "false" preserves existing SDK-check behavior.
+		StreaksEnabled: os.Getenv("STREAKS_ENABLED") != "false",
 	}
 }
 

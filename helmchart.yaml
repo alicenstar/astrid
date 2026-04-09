@@ -16,6 +16,9 @@ spec:
     redis:
       enabled: repl{{ ConfigOptionEquals "redis_type" "embedded_redis" }}
 
+    features:
+      streaksEnabled: repl{{ ConfigOptionEquals "workout_streaks_toggle" "1" }}
+
   optionalValues:
     # External PostgreSQL connection
     - when: "repl{{ ConfigOptionEquals `database_type` `external_postgres` }}"

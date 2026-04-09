@@ -96,7 +96,7 @@ func main() {
 			r.Use(license.StatusMiddleware(licenseClient, cfg.AppVersion))
 		}
 
-		dashboardHandler := handlers.NewDashboardHandler(db, rdb, tmpl, licenseChecker)
+		dashboardHandler := handlers.NewDashboardHandler(db, rdb, tmpl, licenseChecker, cfg.StreaksEnabled)
 		r.Get("/", dashboardHandler.Show)
 
 		plansHandler := handlers.NewPlansHandler(db, rdb, tmpl)

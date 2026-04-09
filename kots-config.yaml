@@ -117,6 +117,16 @@ spec:
       title: Features
       description: Enable or disable optional application features.
       items:
+        - name: workout_streaks_toggle
+          title: Workout Streaks
+          help_text: >
+            Enable workout streak tracking on the dashboard. When enabled, the dashboard
+            shows your current consecutive workout days. Requires the "Workout Streaks"
+            license entitlement.
+          type: bool
+          default: "1"
+          when: '{{repl LicenseFieldValue "workout_streaks_enabled"}}'
+
         - name: google_oauth_toggle
           title: Google OAuth Single Sign-On
           help_text: >

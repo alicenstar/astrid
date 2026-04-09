@@ -68,6 +68,8 @@ spec:
             {{- end }}
             - name: APP_VERSION
               value: {{ .Chart.Version | quote }}
+            - name: STREAKS_ENABLED
+              value: {{ .Values.features.streaksEnabled | toString | quote }}
             - name: REPLICATED_SDK_URL
               value: "http://astrid-sdk:3000"
           livenessProbe:

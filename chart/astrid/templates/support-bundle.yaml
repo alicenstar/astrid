@@ -45,28 +45,25 @@ stringData:
             limits:
               maxLines: 2000
 
-        - exec:
-            name: health-check
-            collectorName: astrid-healthz
-            selector:
-              - app.kubernetes.io/name=astrid
-            namespace: {{ .Release.Namespace }}
-            command: ["wget", "-qO-", "http://localhost:{{ .Values.service.port }}/healthz"]
-            timeout: 10s
+        - http:
+            collectorName: health-check
+            get:
+              url: http://{{ include "astrid.fullname" . }}:{{ .Values.service.port }}/healthz
+              timeout: 10s
 
       analyzers:
         - textAnalyze:
             checkName: "Astrid Health Endpoint"
-            fileName: health-check/*/*/astrid-healthz-stdout.txt
-            regex: '"status"\s*:\s*"ok"'
+            fileName: health-check.json
+            regex: '"status":\s*200'
             outcomes:
               - pass:
                   when: "true"
-                  message: "Astrid health endpoint returned healthy status."
+                  message: "Astrid health endpoint returned HTTP 200 with healthy status."
               - fail:
                   when: "false"
                   message: |
-                    Astrid health endpoint did NOT return status "ok".
+                    Astrid health endpoint did NOT return HTTP 200.
                     Check app/astrid/ logs for errors.
                     Common causes: database connection failure, Redis unreachable.
 

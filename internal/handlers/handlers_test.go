@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -86,6 +87,7 @@ func TestMain(m *testing.M) {
 func cleanHandlerDB(t *testing.T, db *sql.DB) {
 	t.Helper()
 	tables := []string{
+		"body_metrics", "user_profiles",
 		"meals", "daily_logs", "workout_logs", "planned_exercises",
 		"split_days", "workout_splits", "calorie_plan_days",
 		"calorie_plans", "goal_focuses", "users",
@@ -98,6 +100,107 @@ func cleanHandlerDB(t *testing.T, db *sql.DB) {
 	}
 }
 
+func TestProfilePageLoads(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+	r := buildRouter(handlerDB, handlerTmpl)
+	req := httptest.NewRequest(http.MethodGet, "/profile", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "Profile") {
+		t.Error("expected page to contain 'Profile'")
+	}
+}
+
+func TestProfileUpdate(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+	r := buildRouter(handlerDB, handlerTmpl)
+	form := url.Values{
+		"height_cm":      {"175"},
+		"birth_date":     {"1990-05-15"},
+		"sex":            {"male"},
+		"activity_level": {"moderate"},
+		"weight_unit":    {"kg"},
+	}
+	req := httptest.NewRequest(http.MethodPost, "/profile", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("expected 303 redirect, got %d", w.Code)
+	}
+}
+
+func TestBodyMetricsPageLoads(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+	r := buildRouter(handlerDB, handlerTmpl)
+	req := httptest.NewRequest(http.MethodGet, "/body-metrics", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "Body Metrics") {
+		t.Error("expected page to contain 'Body Metrics'")
+	}
+}
+
+func TestBodyMetricsCreate(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+	r := buildRouter(handlerDB, handlerTmpl)
+	form := url.Values{
+		"weight":       {"180.5"},
+		"body_fat_pct": {"15.0"},
+		"muscle_pct":   {"40.0"},
+		"notes":        {"morning weigh-in"},
+	}
+	req := httptest.NewRequest(http.MethodPost, "/body-metrics", strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusSeeOther {
+		t.Errorf("expected 303 redirect, got %d", w.Code)
+	}
+}
+
+func TestBodyMetricsHistoryLoads(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+	r := buildRouter(handlerDB, handlerTmpl)
+	req := httptest.NewRequest(http.MethodGet, "/body-metrics/history", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "Weight History") {
+		t.Error("expected page to contain 'Weight History'")
+	}
+}
+
+func TestDashboardShowsWeightCard(t *testing.T) {
+	cleanHandlerDB(t, handlerDB)
+
+	user, _ := models.EnsureDefaultUser(handlerDB)
+	models.CreateBodyMetric(handlerDB, user.ID, time.Now(), 80.0, nil, nil, "")
+
+	r := buildRouter(handlerDB, handlerTmpl)
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+	body := w.Body.String()
+	if !strings.Contains(body, "Weight") {
+		t.Error("expected dashboard to contain weight card")
+	}
+	if strings.Contains(body, "Coming Soon") {
+		t.Error("expected health data stub to be replaced")
+	}
+}
 func injectUserID(uid uuid.UUID, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := auth.ContextWithUserID(r.Context(), uid)
@@ -166,6 +269,16 @@ func buildRouter(db *sql.DB, tmpl *handlers.Templates) http.Handler {
 
 		supportHandler := handlers.NewSupportHandler("", "dev", tmpl)
 		r.Get("/support", supportHandler.Page)
+
+		profileHandler := handlers.NewProfileHandler(db, tmpl)
+		r.Get("/profile", profileHandler.Page)
+		r.Post("/profile", profileHandler.Update)
+
+		bodyMetricsHandler := handlers.NewBodyMetricsHandler(db, tmpl)
+		r.Get("/body-metrics", bodyMetricsHandler.List)
+		r.Post("/body-metrics", bodyMetricsHandler.Create)
+		r.Get("/body-metrics/history", bodyMetricsHandler.History)
+		r.Post("/body-metrics/{id}/delete", bodyMetricsHandler.Delete)
 	})
 
 	return r
@@ -602,7 +715,7 @@ func TestSignupValidation(t *testing.T) {
 	}
 }
 
-func TestDashboardShowsHealthStub(t *testing.T) {
+func TestDashboardShowsWeightSection(t *testing.T) {
 	cleanHandlerDB(t, handlerDB)
 	r := buildRouter(handlerDB, handlerTmpl)
 
@@ -611,8 +724,8 @@ func TestDashboardShowsHealthStub(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	body := w.Body.String()
-	if !strings.Contains(body, "Coming Soon") {
-		t.Fatal("dashboard should show health data 'Coming Soon' stub")
+	if !strings.Contains(body, "Weight") {
+		t.Fatal("dashboard should show weight section")
 	}
 }
 
@@ -677,6 +790,8 @@ func TestAllPagesReturn200(t *testing.T) {
 		{"summary", "/summary", http.StatusOK},
 		{"support", "/support", http.StatusOK},
 		{"healthz", "/healthz", http.StatusOK},
+		{"profile", "/profile", http.StatusOK},
+		{"body-metrics", "/body-metrics", http.StatusOK},
 	}
 
 	for _, p := range pages {

@@ -21,6 +21,7 @@
                 <a href="/plans" {{if eq .ActiveNav "plans"}}class="active" aria-current="page"{{end}}>Plans</a>
                 <a href="/log" {{if eq .ActiveNav "log"}}class="active" aria-current="page"{{end}}>Meal Log</a>
                 <a href="/summary" {{if eq .ActiveNav "summary"}}class="active" aria-current="page"{{end}}>Summary</a>
+                <a href="/body-metrics" {{if eq .ActiveNav "body_metrics"}}class="active" aria-current="page"{{end}}>Body Metrics</a>
                 <a href="/workouts" {{if eq .ActiveNav "workouts"}}class="active" aria-current="page"{{end}}>Workouts</a>
                 <a href="/support" {{if eq .ActiveNav "support"}}class="active" aria-current="page"{{end}}>Support</a>
             </div>
@@ -28,6 +29,7 @@
             <button class="theme-toggle" aria-label="Toggle dark and light mode" onclick="let t=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=t;localStorage.setItem('theme',t);this.textContent=t==='dark'?'\u2600\uFE0F':'\uD83C\uDF19'" id="theme-btn"></button>
             <script>document.getElementById("theme-btn").textContent=document.documentElement.dataset.theme==="dark"?"\u2600\uFE0F":"\uD83C\uDF19"</script>
         {{if .UserEmail}}
+        <a href="/profile" style="color:var(--text-muted); font-size:0.85rem; text-decoration:underline;">Profile</a>
         <span style="color:var(--text-muted); font-size:0.85rem;">{{.UserEmail}}</span>
         <form method="POST" action="/logout" style="display:inline;">
             <button type="submit" class="btn btn-ghost" style="padding:0 0.5rem; height:1.75rem; font-size:0.8rem;">Logout</button>

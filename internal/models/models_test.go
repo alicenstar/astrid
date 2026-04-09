@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/golang-migrate/migrate/v4"
+	"github.com/google/uuid"
 	migratepostgres "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
@@ -55,9 +56,19 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+func ensureUser(t *testing.T, db *sql.DB) uuid.UUID {
+	t.Helper()
+	u, err := EnsureDefaultUser(db)
+	if err != nil {
+		t.Fatalf("ensureUser: %v", err)
+	}
+	return u.ID
+}
+
 func cleanDB(t *testing.T, db *sql.DB) {
 	t.Helper()
 	tables := []string{
+		"body_metrics", "user_profiles",
 		"meals", "daily_logs", "workout_logs", "planned_exercises",
 		"split_days", "workout_splits", "calorie_plan_days",
 		"calorie_plans", "goal_focuses", "users",
@@ -744,5 +755,171 @@ func TestSeedDemoData(t *testing.T) {
 	plans, _ := ListCaloriePlans(testDB, user.ID)
 	if len(plans) != 1 {
 		t.Fatalf("expected 1 plan after second seed, got %d", len(plans))
+	}
+}
+
+func TestGetOrCreateProfile(t *testing.T) {
+	cleanDB(t, testDB)
+	userID := ensureUser(t, testDB)
+
+	// First call creates a new profile with defaults
+	profile, err := GetOrCreateProfile(testDB, userID)
+	if err != nil {
+		t.Fatalf("GetOrCreateProfile: %v", err)
+	}
+	if profile.UserID != userID {
+		t.Errorf("expected user_id %s, got %s", userID, profile.UserID)
+	}
+	if profile.WeightUnit != "lbs" {
+		t.Errorf("expected default weight_unit 'lbs', got %q", profile.WeightUnit)
+	}
+
+	// Second call returns existing profile
+	profile2, err := GetOrCreateProfile(testDB, userID)
+	if err != nil {
+		t.Fatalf("GetOrCreateProfile (2nd call): %v", err)
+	}
+	if profile2.ID != profile.ID {
+		t.Errorf("expected same profile ID on second call")
+	}
+}
+
+func TestUpdateProfile(t *testing.T) {
+	cleanDB(t, testDB)
+	userID := ensureUser(t, testDB)
+
+	profile, _ := GetOrCreateProfile(testDB, userID)
+
+	err := UpdateProfile(testDB, userID, 175.0, "1990-05-15", "male", "moderate", "kg")
+	if err != nil {
+		t.Fatalf("UpdateProfile: %v", err)
+	}
+
+	updated, _ := GetOrCreateProfile(testDB, userID)
+	if updated.ID != profile.ID {
+		t.Errorf("expected same profile ID after update")
+	}
+	if updated.HeightCm == nil || *updated.HeightCm != 175.0 {
+		t.Errorf("expected height_cm 175.0, got %v", updated.HeightCm)
+	}
+	if updated.Sex == nil || *updated.Sex != "male" {
+		t.Errorf("expected sex 'male', got %v", updated.Sex)
+	}
+	if updated.WeightUnit != "kg" {
+		t.Errorf("expected weight_unit 'kg', got %q", updated.WeightUnit)
+	}
+}
+
+func TestCalculateBMR(t *testing.T) {
+	birthDate := time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC)
+	height := 175.0
+	sex := "male"
+	activity := "moderate"
+
+	profile := &UserProfile{
+		HeightCm:      &height,
+		BirthDate:     &birthDate,
+		Sex:           &sex,
+		ActivityLevel: &activity,
+		WeightUnit:    "kg",
+	}
+
+	bmr := profile.CalculateBMR(80.0)
+	// Male: (10 * 80) + (6.25 * 175) - (5 * age) + 5
+	// age in 2026 = 36
+	// = 800 + 1093.75 - 180 + 5 = 1718.75
+	expected := 1718.75
+	if bmr != expected {
+		t.Errorf("expected BMR %.2f, got %.2f", expected, bmr)
+	}
+
+	tdee := profile.CalculateTDEE(80.0)
+	expectedTDEE := expected * 1.55
+	if tdee != expectedTDEE {
+		t.Errorf("expected TDEE %.2f, got %.2f", expectedTDEE, tdee)
+	}
+
+	// Missing fields returns 0
+	emptyProfile := &UserProfile{WeightUnit: "kg"}
+	if emptyProfile.CalculateBMR(80.0) != 0 {
+		t.Error("expected 0 BMR when fields are missing")
+	}
+}
+
+func TestCreateBodyMetric(t *testing.T) {
+	cleanDB(t, testDB)
+	userID := ensureUser(t, testDB)
+
+	metric, err := CreateBodyMetric(testDB, userID, time.Now(), 80.5, nil, nil, "")
+	if err != nil {
+		t.Fatalf("CreateBodyMetric: %v", err)
+	}
+	if metric.WeightKg != 80.5 {
+		t.Errorf("expected weight 80.5, got %f", metric.WeightKg)
+	}
+	if metric.BodyFatPct != nil {
+		t.Errorf("expected nil body_fat_pct, got %v", metric.BodyFatPct)
+	}
+}
+
+func TestListBodyMetrics(t *testing.T) {
+	cleanDB(t, testDB)
+	userID := ensureUser(t, testDB)
+
+	CreateBodyMetric(testDB, userID, time.Now().AddDate(0, 0, -2), 81.0, nil, nil, "")
+	CreateBodyMetric(testDB, userID, time.Now().AddDate(0, 0, -1), 80.5, nil, nil, "")
+	CreateBodyMetric(testDB, userID, time.Now(), 80.0, nil, nil, "")
+
+	metrics, err := ListBodyMetrics(testDB, userID, 10)
+	if err != nil {
+		t.Fatalf("ListBodyMetrics: %v", err)
+	}
+	if len(metrics) != 3 {
+		t.Fatalf("expected 3 metrics, got %d", len(metrics))
+	}
+	// Most recent first
+	if metrics[0].WeightKg != 80.0 {
+		t.Errorf("expected first metric weight 80.0, got %f", metrics[0].WeightKg)
+	}
+}
+
+func TestGetLatestBodyMetric(t *testing.T) {
+	cleanDB(t, testDB)
+	userID := ensureUser(t, testDB)
+
+	// No metrics yet
+	latest, err := GetLatestBodyMetric(testDB, userID)
+	if err != nil {
+		t.Fatalf("GetLatestBodyMetric: %v", err)
+	}
+	if latest != nil {
+		t.Error("expected nil when no metrics exist")
+	}
+
+	CreateBodyMetric(testDB, userID, time.Now().AddDate(0, 0, -1), 81.0, nil, nil, "")
+	CreateBodyMetric(testDB, userID, time.Now(), 80.0, nil, nil, "")
+
+	latest, err = GetLatestBodyMetric(testDB, userID)
+	if err != nil {
+		t.Fatalf("GetLatestBodyMetric: %v", err)
+	}
+	if latest.WeightKg != 80.0 {
+		t.Errorf("expected latest weight 80.0, got %f", latest.WeightKg)
+	}
+}
+
+func TestDeleteBodyMetric(t *testing.T) {
+	cleanDB(t, testDB)
+	userID := ensureUser(t, testDB)
+
+	metric, _ := CreateBodyMetric(testDB, userID, time.Now(), 80.0, nil, nil, "")
+	err := DeleteBodyMetric(testDB, metric.ID, userID)
+	if err != nil {
+		t.Fatalf("DeleteBodyMetric: %v", err)
+	}
+
+	metrics, _ := ListBodyMetrics(testDB, userID, 10)
+	if len(metrics) != 0 {
+		t.Errorf("expected 0 metrics after delete, got %d", len(metrics))
 	}
 }

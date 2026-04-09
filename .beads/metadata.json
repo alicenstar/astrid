@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "astrid",
+  "project_id": "d1be0beb-863b-4d7f-9a61-31a0a6a4c236"
+}

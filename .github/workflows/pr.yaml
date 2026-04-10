@@ -30,6 +30,14 @@ jobs:
           docker exec pg psql -U astrid -d postgres -c "CREATE DATABASE astrid_test OWNER astrid;" || true
           go test ./... -p 1 -count=1
 
+      - name: Install Replicated CLI
+        run: |
+          curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest \
+            | grep "browser_download_url.*linux_amd64.tar.gz" \
+            | cut -d '"' -f 4 \
+            | xargs curl -fsSL \
+            | tar xz -C /usr/local/bin replicated
+
       - name: Helm dependency build
         run: helm dependency build chart/astrid
 

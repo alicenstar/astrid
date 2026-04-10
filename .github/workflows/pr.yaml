@@ -61,12 +61,20 @@ jobs:
           tags: |
             ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.base }}-pr.${{ github.event.pull_request.number }}
 
-      - name: Stamp chart version
+      - name: Prepare release artifacts
         run: |
-          sed -i "s/^version:.*/version: ${{ steps.version.outputs.version }}/" chart/astrid/Chart.yaml
+          mkdir -p release-manifests
+          cp kots-config.yaml replicated-app.yaml embedded-cluster-config.yaml helmchart.yaml release-manifests/
+          helm package chart/astrid -d release-manifests
 
-      - name: Package Helm chart
-        run: helm package chart/astrid -d .
+      - name: Lint KOTS manifests
+        run: |
+          replicated release lint \
+            --app ${{ secrets.REPLICATED_APP }} \
+            --token ${{ secrets.REPLICATED_API_TOKEN }} \
+            --yaml-dir release-manifests \
+            --fail-on none
+        continue-on-error: false
 
       - name: Create Replicated release
         id: create-release
@@ -74,7 +82,7 @@ jobs:
         with:
           app-slug: ${{ secrets.REPLICATED_APP }}
           api-token: ${{ secrets.REPLICATED_API_TOKEN }}
-          chart: astrid-${{ steps.version.outputs.version }}.tgz
+          yaml-dir: release-manifests
           promote-channel: Unstable
           version: ${{ steps.version.outputs.version }}
 

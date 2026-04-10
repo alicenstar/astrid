@@ -5,6 +5,9 @@ global:
     - name: enterprise-pull-secret
 
 replicaCount: 1
+# @docs:skip -- internal override, not user-configurable
+nameOverride: ""
+fullnameOverride: ""
 
 image:
   repository: images.astrid.fit/proxy/astrid/alicenstar/astrid

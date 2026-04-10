@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      packages: write
+      id-token: write
 
     steps:
       - name: Checkout
@@ -27,6 +29,9 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v4.1.0
 
       - name: Run tests
         run: |
@@ -48,6 +53,7 @@ jobs:
 
       - name: Build and push image
         uses: docker/build-push-action@v7
+        id: build-and-push
         with:
           context: .
           platforms: linux/amd64
@@ -57,6 +63,12 @@ jobs:
             ${{ env.IMAGE_NAME }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Sign the container image
+        run: |
+          cosign sign --yes \
+            "${{ env.IMAGE_NAME }}:${{ steps.version.outputs.base }}@${{ steps.build-and-push.outputs.digest }}" \
+            "${{ env.IMAGE_NAME }}:latest@${{ steps.build-and-push.outputs.digest }}"
 
       - name: Install Replicated CLI
         run: |

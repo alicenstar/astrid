@@ -91,7 +91,6 @@ jobs:
           app-slug: ${{ secrets.REPLICATED_APP }}
           api-token: ${{ secrets.REPLICATED_API_TOKEN }}
           yaml-dir: release-manifests
-          promote-channel: Unstable
           version: ${{ steps.version.outputs.version }}
 
       - name: Create CMX cluster

@@ -56,30 +56,39 @@ jobs:
             ${{ env.IMAGE_NAME }}:${{ steps.version.outputs.base }}
             ${{ env.IMAGE_NAME }}:latest
 
+      - name: Install Replicated CLI
+        run: |
+          curl -s https://api.github.com/repos/replicatedhq/replicated/releases/latest \
+            | grep "browser_download_url.*linux_amd64.tar.gz" \
+            | cut -d '"' -f 4 \
+            | xargs curl -fsSL \
+            | tar xz -C /usr/local/bin replicated
+
       - name: Helm dependency build
         run: helm dependency build chart/astrid
-
-      - name: Stamp chart version
-        run: |
-          sed -i "s/^version:.*/version: ${{ steps.version.outputs.version }}/" chart/astrid/Chart.yaml
 
       - name: Prepare release artifacts
         run: |
           mkdir -p release-manifests
-          cp kots-config.yaml replicated-app.yaml embedded-cluster-config.yaml release-manifests/
-          sed "s/    chartVersion:.*/    chartVersion: ${{ steps.version.outputs.version }}/" helmchart.yaml \
-            > release-manifests/helmchart.yaml
+          cp kots-config.yaml replicated-app.yaml embedded-cluster-config.yaml helmchart.yaml release-manifests/
           helm package chart/astrid -d release-manifests
 
-      - name: Create release and promote to Unstable
+      - name: Create release
         id: create-release
         uses: replicatedhq/replicated-actions/create-release@v1
         with:
           app-slug: ${{ secrets.REPLICATED_APP }}
           api-token: ${{ secrets.REPLICATED_API_TOKEN }}
           yaml-dir: release-manifests
-          promote-channel: Unstable
           version: ${{ steps.version.outputs.version }}
+
+      - name: Promote to Unstable
+        run: |
+          CHANNEL_ID=$(replicated channel ls --app ${{ secrets.REPLICATED_APP }} --token ${{ secrets.REPLICATED_API_TOKEN }} | awk '/Unstable/{print $1}')
+          replicated release promote ${{ steps.create-release.outputs.release-sequence }} "$CHANNEL_ID" \
+            --app ${{ secrets.REPLICATED_APP }} \
+            --token ${{ secrets.REPLICATED_API_TOKEN }} \
+            --version "${{ steps.version.outputs.version }}"
 
       - name: Smoke test on CMX
         id: create-cluster

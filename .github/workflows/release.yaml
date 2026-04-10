@@ -90,6 +90,17 @@ jobs:
             --token ${{ secrets.REPLICATED_API_TOKEN }} \
             --version "${{ steps.version.outputs.version }}"
 
+      - name: Verify Unstable promotion
+        run: |
+          SEQ="${{ steps.create-release.outputs.release-sequence }}"
+          CURRENT=$(replicated channel ls --app ${{ secrets.REPLICATED_APP }} --token ${{ secrets.REPLICATED_API_TOKEN }} | awk '/Unstable/{print $3}')
+          if [ "$CURRENT" != "$SEQ" ]; then
+            echo "ERROR: Unstable is on release $CURRENT, expected $SEQ"
+            echo "This usually means a semver constraint silently rejected the promotion."
+            exit 1
+          fi
+          echo "Unstable confirmed on release $SEQ"
+
       - name: Smoke test on CMX
         id: create-cluster
         uses: replicatedhq/replicated-actions/create-cluster@v1

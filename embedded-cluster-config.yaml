@@ -1,4 +1,6 @@
 apiVersion: embeddedcluster.replicated.com/v1beta1
 kind: Config
+metadata:
+  name: astrid
 spec:
-  version: "3.0.0-alpha-31"
+  version: "3.0.0-alpha-31+k8s-1.34"

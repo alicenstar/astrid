@@ -88,7 +88,7 @@ jobs:
         run: |
           mkdir -p release-manifests
           cp kots-config.yaml replicated-app.yaml embedded-cluster-config.yaml release-manifests/
-          sed "s/    chartVersion:.*/    chartVersion: ${{ steps.version.outputs.version }}/" helmchart.yaml \
+          sed "s/    chartVersion:.*/    chartVersion: ${{ steps.version.outputs.base }}/" helmchart.yaml \
             > release-manifests/helmchart.yaml
           helm package chart/astrid -d release-manifests
 

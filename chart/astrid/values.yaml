@@ -12,7 +12,7 @@ fullnameOverride: ""
 image:
   repository: images.astrid.fit/proxy/astrid/alicenstar/astrid
   tag: "0.1.0"
-  pullPolicy: Always
+  pullPolicy: IfNotPresent
 
 imagePullSecrets: []
 

@@ -5,7 +5,7 @@ metadata:
 spec:
   chart:
     name: astrid
-    chartVersion: 0.2.7
+    chartVersion: 0.2.8
   releaseName: astrid
   values:
     postgresql:

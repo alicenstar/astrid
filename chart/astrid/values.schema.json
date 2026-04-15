@@ -38,7 +38,7 @@
       "type": "object",
       "properties": {
         "host": { "type": "string" },
-        "port": { "type": "integer" },
+        "port": { "type": ["integer", "string"] },
         "user": { "type": "string" },
         "password": { "type": "string" },
         "database": { "type": "string" }
@@ -54,7 +54,7 @@
       "type": "object",
       "properties": {
         "host": { "type": "string" },
-        "port": { "type": "integer" },
+        "port": { "type": ["integer", "string"] },
         "password": { "type": "string" }
       }
     },

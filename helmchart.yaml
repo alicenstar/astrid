@@ -11,23 +11,23 @@ spec:
     appVersionOverride: repl{{ VersionLabel }}
 
     image:
-      repository: 'repl{{ HasLocalRegistry | ternary (print LocalRegistryHost "/" LocalRegistryNamespace "/alicenstar/astrid") "images.astrid.fit/proxy/astrid/alicenstar/astrid" }}'
+      repository: 'repl{{ ReplicatedImageName (HelmValue ".image.repository") true }}'
 
-    initImage: 'repl{{ HasLocalRegistry | ternary (print LocalRegistryHost "/" LocalRegistryNamespace "/busybox:1.36") "images.astrid.fit/proxy/astrid/busybox:1.36" }}'
+    initImage: 'repl{{ ReplicatedImageName (HelmValue ".initImage") true }}'
 
     postgresql:
       enabled: repl{{ ConfigOptionEquals "database_type" "embedded_postgres" }}
       auth:
         password: repl{{ ConfigOption "embedded_db_password" }}
       image:
-        registry: 'repl{{ HasLocalRegistry | ternary LocalRegistryHost "images.astrid.fit" }}'
-        repository: 'repl{{ HasLocalRegistry | ternary (print LocalRegistryNamespace "/bitnamilegacy/postgresql") "proxy/astrid/bitnamilegacy/postgresql" }}'
+        registry: 'repl{{ ReplicatedImageRegistry (HelmValue ".postgresql.image.registry") true }}'
+        repository: 'repl{{ HelmValue ".postgresql.image.repository" }}'
 
     redis:
       enabled: repl{{ ConfigOptionEquals "redis_type" "embedded_redis" }}
       image:
-        registry: 'repl{{ HasLocalRegistry | ternary LocalRegistryHost "images.astrid.fit" }}'
-        repository: 'repl{{ HasLocalRegistry | ternary (print LocalRegistryNamespace "/bitnamilegacy/redis") "proxy/astrid/bitnamilegacy/redis" }}'
+        registry: 'repl{{ ReplicatedImageRegistry (HelmValue ".redis.image.registry") true }}'
+        repository: 'repl{{ HelmValue ".redis.image.repository" }}'
 
     features:
       streaksEnabled: repl{{ ConfigOptionEquals "workout_streaks_toggle" "1" }}

@@ -2,8 +2,8 @@ apiVersion: v2
 name: astrid
 description: Astrid — fitness and nutrition tracker
 type: application
-version: 0.2.11
-appVersion: "0.2.11"
+version: 0.2.12
+appVersion: "0.2.12"
 
 dependencies:
   - name: postgresql

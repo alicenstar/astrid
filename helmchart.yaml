@@ -20,14 +20,14 @@ spec:
       auth:
         password: repl{{ ConfigOption "embedded_db_password" }}
       image:
-        registry: ""
-        repository: 'repl{{ ReplicatedImageName (print (HelmValue ".postgresql.image.registry") "/" (HelmValue ".postgresql.image.repository")) true }}'
+        registry: 'repl{{ ReplicatedImageRegistry (HelmValue ".postgresql.image.registry") }}'
+        repository: 'repl{{ ReplicatedImageRepository (HelmValue ".postgresql.image.repository") }}'
 
     redis:
       enabled: repl{{ ConfigOptionEquals "redis_type" "embedded_redis" }}
       image:
-        registry: ""
-        repository: 'repl{{ ReplicatedImageName (print (HelmValue ".redis.image.registry") "/" (HelmValue ".redis.image.repository")) true }}'
+        registry: 'repl{{ ReplicatedImageRegistry (HelmValue ".redis.image.registry") }}'
+        repository: 'repl{{ ReplicatedImageRepository (HelmValue ".redis.image.repository") }}'
 
     features:
       streaksEnabled: repl{{ ConfigOptionEquals "workout_streaks_toggle" "1" }}

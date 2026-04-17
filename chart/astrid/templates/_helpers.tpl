@@ -19,9 +19,9 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 
 {{- define "astrid.databaseURL" -}}
 {{- if .Values.postgresql.enabled -}}
-postgres://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password }}@{{ include "astrid.fullname" . }}-postgresql:5432/{{ .Values.postgresql.auth.database }}?sslmode=disable
+postgres://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password | urlquery }}@{{ include "astrid.fullname" . }}-postgresql:5432/{{ .Values.postgresql.auth.database }}?sslmode=disable
 {{- else -}}
-postgres://{{ .Values.externalDatabase.user }}:{{ .Values.externalDatabase.password }}@{{ .Values.externalDatabase.host }}:{{ .Values.externalDatabase.port }}/{{ .Values.externalDatabase.database }}?sslmode=disable
+postgres://{{ .Values.externalDatabase.user | urlquery }}:{{ .Values.externalDatabase.password | urlquery }}@{{ .Values.externalDatabase.host }}:{{ .Values.externalDatabase.port }}/{{ .Values.externalDatabase.database }}?sslmode=disable
 {{- end -}}
 {{- end -}}
 
@@ -61,7 +61,7 @@ imagePullSecrets:
 redis://{{ include "astrid.fullname" . }}-redis-master:6379/0
 {{- else -}}
 {{- if .Values.externalRedis.password -}}
-redis://:{{ .Values.externalRedis.password }}@{{ .Values.externalRedis.host }}:{{ .Values.externalRedis.port }}/0
+redis://:{{ .Values.externalRedis.password | urlquery }}@{{ .Values.externalRedis.host }}:{{ .Values.externalRedis.port }}/0
 {{- else -}}
 redis://{{ .Values.externalRedis.host }}:{{ .Values.externalRedis.port }}/0
 {{- end -}}

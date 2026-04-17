@@ -5,9 +5,11 @@ metadata:
 spec:
   chart:
     name: astrid
-    chartVersion: 0.2.9
+    chartVersion: 0.2.10
   releaseName: astrid
   values:
+    appVersionOverride: repl{{ VersionLabel }}
+
     postgresql:
       enabled: repl{{ ConfigOptionEquals "database_type" "embedded_postgres" }}
       auth:

@@ -5,7 +5,7 @@ metadata:
 spec:
   chart:
     name: astrid
-    chartVersion: 0.2.11
+    chartVersion: 0.2.12
   releaseName: astrid
   values:
     appVersionOverride: repl{{ VersionLabel }}
@@ -20,14 +20,14 @@ spec:
       auth:
         password: repl{{ ConfigOption "embedded_db_password" }}
       image:
-        registry: 'repl{{ ReplicatedImageRegistry (HelmValue ".postgresql.image.registry") true }}'
-        repository: 'repl{{ HelmValue ".postgresql.image.repository" }}'
+        registry: 'repl{{ ReplicatedImageRegistry (HelmValue ".postgresql.image.registry") }}'
+        repository: 'repl{{ ReplicatedImageRepository (HelmValue ".postgresql.image.repository") }}'
 
     redis:
       enabled: repl{{ ConfigOptionEquals "redis_type" "embedded_redis" }}
       image:
-        registry: 'repl{{ ReplicatedImageRegistry (HelmValue ".redis.image.registry") true }}'
-        repository: 'repl{{ HelmValue ".redis.image.repository" }}'
+        registry: 'repl{{ ReplicatedImageRegistry (HelmValue ".redis.image.registry") }}'
+        repository: 'repl{{ ReplicatedImageRepository (HelmValue ".redis.image.repository") }}'
 
     features:
       streaksEnabled: repl{{ ConfigOptionEquals "workout_streaks_toggle" "1" }}

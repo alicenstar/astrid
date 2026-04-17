@@ -3,6 +3,7 @@ package license
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 type UpdateInfo struct {
@@ -32,8 +33,14 @@ func (c *Client) CheckForUpdates(currentVersion string) (*UpdateInfo, error) {
 	// sorted newest-first. If the SDK is stale, our own version may
 	// appear in this list. Only return updates genuinely newer than
 	// the deployed chart version.
+	//
+	// Strip build metadata (e.g. +sha) before comparing, since the
+	// app version from Chart.yaml won't include the SHA suffix that
+	// the release version label has.
+	baseVersion := strings.SplitN(currentVersion, "+", 2)[0]
 	for i, u := range updates {
-		if u.VersionLabel == currentVersion {
+		uBase := strings.SplitN(u.VersionLabel, "+", 2)[0]
+		if uBase == baseVersion {
 			if i > 0 {
 				return &updates[0], nil
 			}

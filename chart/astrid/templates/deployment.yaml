@@ -67,7 +67,7 @@ spec:
               value: {{ .Values.auth.google.redirectURL | quote }}
             {{- end }}
             - name: APP_VERSION
-              value: {{ .Chart.Version | quote }}
+              value: {{ .Values.appVersionOverride | default .Chart.Version | quote }}
             - name: STREAKS_ENABLED
               value: {{ .Values.features.streaksEnabled | toString | quote }}
             - name: REPLICATED_SDK_URL

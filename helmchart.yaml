@@ -5,16 +5,29 @@ metadata:
 spec:
   chart:
     name: astrid
-    chartVersion: 0.2.9
+    chartVersion: 0.2.10
   releaseName: astrid
   values:
+    appVersionOverride: repl{{ VersionLabel }}
+
+    image:
+      repository: 'repl{{ HasLocalRegistry | ternary (print LocalRegistryHost "/" LocalRegistryNamespace "/alicenstar/astrid") "images.astrid.fit/proxy/astrid/alicenstar/astrid" }}'
+
+    initImage: 'repl{{ HasLocalRegistry | ternary (print LocalRegistryHost "/" LocalRegistryNamespace "/busybox:1.36") "images.astrid.fit/proxy/astrid/busybox:1.36" }}'
+
     postgresql:
       enabled: repl{{ ConfigOptionEquals "database_type" "embedded_postgres" }}
       auth:
         password: repl{{ ConfigOption "embedded_db_password" }}
+      image:
+        registry: 'repl{{ HasLocalRegistry | ternary LocalRegistryHost "images.astrid.fit" }}'
+        repository: 'repl{{ HasLocalRegistry | ternary (print LocalRegistryNamespace "/bitnamilegacy/postgresql") "proxy/astrid/bitnamilegacy/postgresql" }}'
 
     redis:
       enabled: repl{{ ConfigOptionEquals "redis_type" "embedded_redis" }}
+      image:
+        registry: 'repl{{ HasLocalRegistry | ternary LocalRegistryHost "images.astrid.fit" }}'
+        repository: 'repl{{ HasLocalRegistry | ternary (print LocalRegistryNamespace "/bitnamilegacy/redis") "proxy/astrid/bitnamilegacy/redis" }}'
 
     features:
       streaksEnabled: repl{{ ConfigOptionEquals "workout_streaks_toggle" "1" }}
@@ -52,7 +65,16 @@ spec:
 
   # Builder section: static values for air-gap image discovery
   builder:
+    image:
+      repository: images.astrid.fit/proxy/astrid/alicenstar/astrid
+    initImage: images.astrid.fit/proxy/astrid/busybox:1.36
     postgresql:
       enabled: true
+      image:
+        registry: images.astrid.fit
+        repository: proxy/astrid/bitnamilegacy/postgresql
     redis:
       enabled: true
+      image:
+        registry: images.astrid.fit
+        repository: proxy/astrid/bitnamilegacy/redis

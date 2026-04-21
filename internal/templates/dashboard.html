@@ -62,11 +62,30 @@
         {{end}}
     </div>
 </div>
-<div class="card" style="border-style:dashed; opacity:0.7; margin-top:1rem;">
-    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
-        <h2 style="margin-bottom:0;">Health Data Sync</h2>
-        <span class="streak-badge" style="background:rgba(255,253,130,0.2); color:var(--warning);">Coming Soon</span>
+<div class="card" style="margin-top:1rem;">
+    <h2>Weight</h2>
+    {{if .LatestMetric}}
+    <div style="display:flex; align-items:baseline; gap:0.5rem;">
+        <span style="font-size:1.75rem; font-weight:700;">
+            {{if eq .WeightUnit "lbs"}}{{printf "%.1f" (mul .LatestMetric.WeightKg 2.20462)}} lbs{{else}}{{printf "%.1f" .LatestMetric.WeightKg}} kg{{end}}
+        </span>
+        {{if eq .WeightTrend "up"}}<span style="color:var(--warning);">&#9650;</span>
+        {{else if eq .WeightTrend "down"}}<span style="color:var(--accent);">&#9660;</span>
+        {{else if eq .WeightTrend "stable"}}<span style="color:var(--text-muted);">&#9644;</span>{{end}}
+        <span style="color:var(--text-muted); font-size:0.85rem;">vs 7 days ago</span>
     </div>
-    <p style="color:var(--text-muted);">Connect Fitbit, Google Health, and other services to automatically import steps, calories, and workouts.</p>
+    {{if gt .BMR 0.0}}
+    <div style="display:flex; gap:1.5rem; margin-top:0.5rem; font-size:0.85rem; color:var(--text-muted);">
+        <span>BMR: {{printf "%.0f" .BMR}} kcal</span>
+        <span>TDEE: {{printf "%.0f" .TDEE}} kcal</span>
+    </div>
+    {{end}}
+    <div style="margin-top:0.75rem;">
+        <a href="/body-metrics" class="btn btn-ghost">Log Weight</a>
+        <a href="/body-metrics/history" class="btn btn-ghost">History</a>
+    </div>
+    {{else}}
+    <p style="color:var(--text-muted);">No weight logged yet. <a href="/body-metrics">Log your first entry</a>.</p>
+    {{end}}
 </div>
 {{end}}
